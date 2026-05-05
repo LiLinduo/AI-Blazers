@@ -9,11 +9,15 @@ const totalCount = papers.length;
 
 const timeline = [...papers].sort((a, b) => a.year - b.year);
 
-const toRelative = (path?: string) => {
+const base = import.meta.env.BASE_URL;
+
+const withBase = (path?: string) => {
   if (!path) return "#";
 
-  const cleanPath = path.replace(/^\/+/, "");
-  return `./${cleanPath}`;
+  const cleanBase = base.replace(/\/$/, "");
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+
+  return `${cleanBase}${cleanPath}`;
 };
 ---
 
@@ -24,13 +28,13 @@ const toRelative = (path?: string) => {
     <title>AI Blazers</title>
     <meta
       name="description"
-      content="AI Blazers is a paper atlas for reading classic AI papers with explanations, background, terminology, formulas, and historical context."
+      content="AI Blazers is a paper atlas for reading classic AI papers with explanations, background, terminology, formulas, experiments, historical context, and influence."
     />
   </head>
 
   <body>
     <header class="site-header">
-      <a class="brand" href="./">
+      <a class="brand" href={base}>
         <span class="brand-mark">AI</span>
         <span>AI Blazers</span>
       </a>
@@ -161,7 +165,7 @@ const toRelative = (path?: string) => {
                   <td>{paper.subtopic}</td>
                   <td>
                     {paper.status === "ready" && paper.href ? (
-                      <a class="paper-link" href={toRelative(paper.href)}>{paper.title}</a>
+                      <a class="paper-link" href={withBase(paper.href)}>{paper.title}</a>
                     ) : (
                       <span class="paper-muted">{paper.title}</span>
                     )}

@@ -1,8 +1,8 @@
-// @ts-check
 import { defineConfig } from "astro/config";
 
-// https://astro.build/config
+const isGitHubActions = process.env.GITHUB_ACTIONS === "true";
+
 export default defineConfig({
   site: "https://LiLinduo.github.io",
-  base: "/AI-Blazers",
+  base: isGitHubActions ? "/AI-Blazers" : "/",
 });
