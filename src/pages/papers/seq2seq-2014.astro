@@ -1,5 +1,7 @@
 ---
 import "../../styles/global.css";
+
+const base = import.meta.env.BASE_URL;
 ---
 
 <html lang="en">
@@ -11,13 +13,13 @@ import "../../styles/global.css";
 
   <body>
     <header class="site-header">
-      <a class="brand" href="/">
+      <a class="brand" href={base}>
         <span class="brand-mark">AI</span>
         <span>AI Blazers</span>
       </a>
 
       <nav class="nav">
-        <a href="/">Home</a>
+        <a href={base}>Home</a>
       </nav>
     </header>
 
@@ -30,30 +32,18 @@ import "../../styles/global.css";
         </h1>
 
         <p class="paper-subtitle">
-          A deep reading note on the paper that helped establish the Seq2Seq encoder-decoder framework.
+          This is the reading note for the Seq2Seq paper.
         </p>
 
-        <section>
-          <h2>One-sentence summary</h2>
-          <p>
-            This paper shows that a deep LSTM encoder-decoder model can map one variable-length sequence
-            to another and achieve strong results on large-scale machine translation.
-          </p>
-        </section>
+        <h2>One-sentence summary</h2>
+        <p>
+          This paper shows that an LSTM encoder-decoder can map one sequence to another sequence.
+        </p>
 
-        <section>
-          <h2>Why this paper matters</h2>
-          <p>
-            Write your background and historical context here.
-          </p>
-        </section>
-
-        <section>
-          <h2>Reading notes</h2>
-          <p>
-            Write your detailed explanation here.
-          </p>
-        </section>
+        <h2>Why this paper matters</h2>
+        <p>
+          Add your detailed reading notes here.
+        </p>
       </article>
     </main>
   </body>
