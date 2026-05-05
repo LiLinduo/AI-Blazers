@@ -19,6 +19,10 @@ const withBase = (path?: string) => {
 
   return `${cleanBase}${cleanPath}`;
 };
+
+const paperPath = (paperId: string) => `/papers/${paperId}/`;
+const routePath = (routeId: string) => `/routes/${routeId}/`;
+const trailPath = (trailId: string) => `/trails/${trailId}/`;
 ---
 
 <html lang="en">
@@ -26,6 +30,7 @@ const withBase = (path?: string) => {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>AI Blazers</title>
+    <link rel="icon" href={`${base}favicon.ico`} />
     <meta
       name="description"
       content="AI Blazers is a paper atlas for reading classic AI papers with explanations, background, terminology, formulas, experiments, historical context, and influence."
@@ -66,7 +71,7 @@ const withBase = (path?: string) => {
         <aside class="hero-panel">
           <div class="stat">
             <span class="stat-number">{totalCount}</span>
-            <span class="stat-label">papers collected</span>
+            <span class="stat-label">papers in atlas</span>
           </div>
           <div class="stat">
             <span class="stat-number">{readyCount}</span>
@@ -90,19 +95,23 @@ const withBase = (path?: string) => {
 
         <div class="route-grid">
           {routes.map((route) => (
-            <article class="card route-card">
+            <a class="card route-card link-card" href={withBase(routePath(route.id))}>
               <h3>{route.title}</h3>
               <p>{route.description}</p>
 
               <div class="mini-flow">
-                {route.papers.slice(0, 6).map((paper) => <span>{paper}</span>)}
-                {route.papers.length > 6 && <span>+{route.papers.length - 6}</span>}
+                {route.paperIds.slice(0, 6).map((paperId) => {
+                  const paper = papers.find((item) => item.id === paperId);
+                  return <span>{paper?.subtopic ?? paperId}</span>;
+                })}
+                {route.paperIds.length > 6 && <span>+{route.paperIds.length - 6}</span>}
               </div>
 
               <div class="card-footer">
-                <span>{route.papers.length} papers</span>
+                <span>{route.paperIds.length} papers</span>
+                <span>View route →</span>
               </div>
-            </article>
+            </a>
           ))}
         </div>
       </section>
@@ -118,14 +127,19 @@ const withBase = (path?: string) => {
 
         <div class="trail-grid">
           {trails.map((trail) => (
-            <article class="card trail-card">
-              <h3>{trail.name}</h3>
-              <p>{trail.subtitle}</p>
+            <a class="card trail-card link-card" href={withBase(trailPath(trail.id))}>
+              <h3>{trail.title}</h3>
+              <p>{trail.description}</p>
 
               <div class="tag-row">
                 {trail.tags.map((tag) => <span>{tag}</span>)}
               </div>
-            </article>
+
+              <div class="card-footer">
+                <span>{trail.paperIds.length} papers</span>
+                <span>View trail →</span>
+              </div>
+            </a>
           ))}
         </div>
       </section>
@@ -136,7 +150,7 @@ const withBase = (path?: string) => {
             <p class="eyebrow">Paper index</p>
             <h2>All papers</h2>
             <p>
-              Published papers will become clickable. Unpublished papers stay as coming soon.
+              Published papers are clickable. Unpublished papers stay as coming soon.
             </p>
           </div>
 
@@ -164,8 +178,8 @@ const withBase = (path?: string) => {
                   <td><span class="topic-badge">{paper.topic}</span></td>
                   <td>{paper.subtopic}</td>
                   <td>
-                    {paper.status === "ready" && paper.href ? (
-                      <a class="paper-link" href={withBase(paper.href)}>{paper.title}</a>
+                    {paper.status === "ready" ? (
+                      <a class="paper-link" href={withBase(paperPath(paper.id))}>{paper.title}</a>
                     ) : (
                       <span class="paper-muted">{paper.title}</span>
                     )}

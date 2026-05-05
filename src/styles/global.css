@@ -643,3 +643,83 @@ h1 {
     gap: 1px;
   }
 }
+
+.link-card {
+  color: inherit;
+}
+
+.link-card:hover h3 {
+  color: var(--accent);
+}
+
+.collection-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 34px;
+}
+
+.collection-item {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 16px;
+}
+
+.collection-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--panel-soft);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.collection-body {
+  min-width: 0;
+}
+
+.collection-meta {
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.collection-title {
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.collection-title:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.collection-title.muted {
+  color: var(--text);
+}
+
+.trail-page-tags {
+  margin-top: -18px;
+  margin-bottom: 28px;
+}
+
+@media (max-width: 700px) {
+  .collection-item {
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+
+  .collection-item > div:last-child {
+    grid-column: 2;
+  }
+}

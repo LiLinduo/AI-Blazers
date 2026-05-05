@@ -1,0 +1,91 @@
+---
+import "../../styles/global.css";
+import { papers } from "../../data/papers";
+import { routes } from "../../data/routes";
+
+export function getStaticPaths() {
+  return routes.map((route) => ({
+    params: { id: route.id },
+    props: { route },
+  }));
+}
+
+const { route } = Astro.props;
+
+const base = import.meta.env.BASE_URL;
+
+const withBase = (path?: string) => {
+  if (!path) return "#";
+
+  const cleanBase = base.replace(/\/$/, "");
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+
+  return `${cleanBase}${cleanPath}`;
+};
+
+const paperPath = (paperId: string) => `/papers/${paperId}/`;
+
+const routePapers = route.paperIds
+  .map((paperId: string) => papers.find((paper) => paper.id === paperId))
+  .filter(Boolean);
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{route.title} · AI Blazers</title>
+    <link rel="icon" href={`${base}favicon.ico`} />
+  </head>
+
+  <body>
+    <header class="site-header">
+      <a class="brand" href={base}>
+        <span class="brand-mark">AI</span>
+        <span>AI Blazers</span>
+      </a>
+
+      <nav class="nav">
+        <a href={base}>Home</a>
+      </nav>
+    </header>
+
+    <main class="paper-page">
+      <article class="paper-article">
+        <p class="eyebrow">Reading Route</p>
+        <h1 class="paper-title">{route.title}</h1>
+        <p class="paper-subtitle">{route.description}</p>
+
+        <div class="collection-list">
+          {routePapers.map((paper: any, index: number) => (
+            <div class="collection-item">
+              <div class="collection-index">{index + 1}</div>
+
+              <div class="collection-body">
+                <div class="collection-meta">
+                  {paper.year} · {paper.topic} · {paper.subtopic}
+                </div>
+
+                {paper.status === "ready" ? (
+                  <a class="collection-title" href={withBase(paperPath(paper.id))}>
+                    {paper.title}
+                  </a>
+                ) : (
+                  <span class="collection-title muted">{paper.title}</span>
+                )}
+              </div>
+
+              <div>
+                {paper.status === "ready" ? (
+                  <span class="status ready">Read now</span>
+                ) : (
+                  <span class="status soon">Coming soon</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </article>
+    </main>
+  </body>
+</html>
