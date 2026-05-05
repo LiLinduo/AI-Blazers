@@ -1,0 +1,201 @@
+---
+import "../styles/global.css";
+import { papers } from "../data/papers";
+import { routes } from "../data/routes";
+import { trails } from "../data/trails";
+
+const readyCount = papers.filter((paper) => paper.status === "ready").length;
+const totalCount = papers.length;
+
+const timeline = [...papers].sort((a, b) => a.year - b.year);
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Blazers</title>
+    <meta
+      name="description"
+      content="AI Blazers is a paper atlas for reading classic AI papers with explanations, background, terminology, formulas, and historical context."
+    />
+  </head>
+
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/">
+        <span class="brand-mark">AI</span>
+        <span>AI Blazers</span>
+      </a>
+
+      <nav class="nav">
+        <a href="#routes">Routes</a>
+        <a href="#trails">People & Labs</a>
+        <a href="#papers">Papers</a>
+        <a href="#timeline">Timeline</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div>
+          <p class="eyebrow">A paper atlas for classic AI research</p>
+          <h1>Read the papers that shaped modern AI.</h1>
+          <p class="hero-text">
+            AI Blazers is a free, open reading atlas for classic AI papers. Each paper is explained through
+            background, core ideas, terminology, formulas, experiments, historical context, and influence.
+          </p>
+
+          <div class="hero-actions">
+            <a class="primary-button" href="#routes">Start with a route</a>
+            <a class="secondary-button" href="#papers">Browse papers</a>
+          </div>
+        </div>
+
+        <aside class="hero-panel">
+          <div class="stat">
+            <span class="stat-number">{totalCount}</span>
+            <span class="stat-label">papers collected</span>
+          </div>
+          <div class="stat">
+            <span class="stat-number">{readyCount}</span>
+            <span class="stat-label">available now</span>
+          </div>
+          <div class="stat">
+            <span class="stat-number">{routes.length}</span>
+            <span class="stat-label">reading routes</span>
+          </div>
+        </aside>
+      </section>
+
+      <section id="routes" class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Reading routes</p>
+          <h2>Start from a path, not a random list.</h2>
+          <p>
+            Papers are organized as learning routes, so students can follow the evolution of ideas across time.
+          </p>
+        </div>
+
+        <div class="route-grid">
+          {routes.map((route) => (
+            <article class="card route-card">
+              <h3>{route.title}</h3>
+              <p>{route.description}</p>
+
+              <div class="mini-flow">
+                {route.papers.slice(0, 6).map((paper) => <span>{paper}</span>)}
+                {route.papers.length > 6 && <span>+{route.papers.length - 6}</span>}
+              </div>
+
+              <div class="card-footer">
+                <span>{route.papers.length} papers</span>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section id="trails" class="section">
+        <div class="section-heading">
+          <p class="eyebrow">People & Labs</p>
+          <h2>Follow research trails.</h2>
+          <p>
+            Some ideas are best understood as a sequence of works from a researcher, lab, or team.
+          </p>
+        </div>
+
+        <div class="trail-grid">
+          {trails.map((trail) => (
+            <article class="card trail-card">
+              <h3>{trail.name}</h3>
+              <p>{trail.subtitle}</p>
+
+              <div class="tag-row">
+                {trail.tags.map((tag) => <span>{tag}</span>)}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section id="papers" class="section">
+        <div class="section-heading with-meta">
+          <div>
+            <p class="eyebrow">Paper index</p>
+            <h2>All papers</h2>
+            <p>
+              Published papers will become clickable. Unpublished papers stay as coming soon.
+            </p>
+          </div>
+
+          <div class="progress-pill">
+            {readyCount}/{totalCount} ready
+          </div>
+        </div>
+
+        <div class="paper-table-wrap">
+          <table class="paper-table">
+            <thead>
+              <tr>
+                <th>Year</th>
+                <th>Topic</th>
+                <th>Subtopic</th>
+                <th>Paper</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {papers.map((paper) => (
+                <tr>
+                  <td>{paper.year}</td>
+                  <td><span class="topic-badge">{paper.topic}</span></td>
+                  <td>{paper.subtopic}</td>
+                  <td>
+                    {paper.status === "ready" && paper.href ? (
+                      <a class="paper-link" href={paper.href}>{paper.title}</a>
+                    ) : (
+                      <span class="paper-muted">{paper.title}</span>
+                    )}
+                  </td>
+                  <td>
+                    {paper.status === "ready" ? (
+                      <span class="status ready">Read now</span>
+                    ) : (
+                      <span class="status soon">Coming soon</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="timeline" class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Timeline</p>
+          <h2>A compact history of the atlas.</h2>
+        </div>
+
+        <div class="timeline">
+          {timeline.map((paper) => (
+            <div class="timeline-item">
+              <div class="timeline-year">{paper.year}</div>
+              <div class="timeline-dot"></div>
+              <div class="timeline-content">
+                <span>{paper.topic}</span>
+                <strong>{paper.subtopic}</strong>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>AI Blazers · A free paper atlas for classic AI research.</p>
+    </footer>
+  </body>
+</html>
