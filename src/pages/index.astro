@@ -9,15 +9,11 @@ const totalCount = papers.length;
 
 const timeline = [...papers].sort((a, b) => a.year - b.year);
 
-const base = import.meta.env.BASE_URL;
-
-const withBase = (path?: string) => {
+const toRelative = (path?: string) => {
   if (!path) return "#";
 
-  const cleanBase = base.replace(/\/$/, "");
-  const cleanPath = path.startsWith("/") ? path : `/${path}`;
-
-  return `${cleanBase}${cleanPath}`;
+  const cleanPath = path.replace(/^\/+/, "");
+  return `./${cleanPath}`;
 };
 ---
 
@@ -34,7 +30,7 @@ const withBase = (path?: string) => {
 
   <body>
     <header class="site-header">
-      <a class="brand" href={base}>
+      <a class="brand" href="./">
         <span class="brand-mark">AI</span>
         <span>AI Blazers</span>
       </a>
@@ -165,7 +161,7 @@ const withBase = (path?: string) => {
                   <td>{paper.subtopic}</td>
                   <td>
                     {paper.status === "ready" && paper.href ? (
-                      <a class="paper-link" href={withBase(paper.href)}>{paper.title}</a>
+                      <a class="paper-link" href={toRelative(paper.href)}>{paper.title}</a>
                     ) : (
                       <span class="paper-muted">{paper.title}</span>
                     )}
