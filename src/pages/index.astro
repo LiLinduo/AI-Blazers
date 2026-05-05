@@ -30,7 +30,7 @@ const trailPath = (trailId: string) => `/trails/${trailId}/`;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>AI Blazers</title>
-    <link rel="icon" href={`${base}favicon.ico`} />
+    <link rel="icon" href={`${base.replace(/\/$/, "")}/favicon.ico`} />
     <meta
       name="description"
       content="AI Blazers is a paper atlas for reading classic AI papers with explanations, background, terminology, formulas, experiments, historical context, and influence."
