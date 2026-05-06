@@ -3,6 +3,339 @@ import "../../styles/global.css";
 
 const base = import.meta.env.BASE_URL;
 const faviconPath = `${base.replace(/\/$/, "")}/favicon.ico`;
+
+const annotations = {
+  seq2seq: {
+    type: "Framework",
+    title: "Sequence-to-Sequence Learning",
+    body:
+      "Seq2Seq means learning a mapping from one variable-length sequence to another. In this paper, the input is an English sentence and the output is a French sentence. The same abstraction later became useful for summarization, dialogue, question answering, speech recognition, and code generation.",
+    why:
+      "The key historical shift is that many NLP problems can be treated as input sequence → output sequence, instead of being solved by hand-engineered task-specific pipelines.",
+    related: [
+      "Encoder-Decoder",
+      "Neural Machine Translation",
+      "Text Summarization",
+      "Dialogue Systems",
+      "Speech Recognition",
+      "Code Generation",
+    ],
+  },
+  encoderDecoder: {
+    type: "Architecture",
+    title: "Encoder-Decoder",
+    body:
+      "An encoder reads the input sequence and converts it into an internal representation. A decoder then uses that representation to generate the output sequence. In this paper, both the encoder and decoder are deep LSTMs.",
+    why:
+      "This structure separates understanding the source sentence from generating the target sentence, while keeping the whole model trainable end-to-end.",
+    related: [
+      "Seq2Seq",
+      "Encoder",
+      "Decoder",
+      "Context Vector",
+      "Attention",
+      "Transformer Encoder-Decoder",
+    ],
+  },
+  rnn: {
+    type: "Model Family",
+    title: "Recurrent Neural Network",
+    body:
+      "An RNN processes a sequence step by step while maintaining a hidden state. The hidden state is meant to summarize information from previous time steps.",
+    why:
+      "RNNs are a natural starting point for sequence modeling, but vanilla RNNs struggle with long-range dependencies. This is why the paper uses LSTMs instead.",
+    related: [
+      "Backpropagation Through Time",
+      "Vanishing Gradient",
+      "Exploding Gradient",
+      "LSTM",
+      "GRU",
+      "Sequence Modeling",
+    ],
+  },
+  lstm: {
+    type: "Model",
+    title: "LSTM",
+    body:
+      "LSTM stands for Long Short-Term Memory. It is a type of recurrent neural network designed to handle long-range dependencies better than vanilla RNNs by using gated memory cells.",
+    why:
+      "A normal RNN struggles to remember information across long time spans. Since translation often requires long-distance dependencies, LSTM is a natural choice.",
+    related: [
+      "RNN",
+      "GRU",
+      "Memory Cell",
+      "Forget Gate",
+      "Input Gate",
+      "Output Gate",
+      "Long-Range Dependency",
+    ],
+  },
+  smt: {
+    type: "Baseline",
+    title: "Statistical Machine Translation",
+    body:
+      "SMT was the dominant machine translation paradigm before neural machine translation. Phrase-based SMT systems used phrase tables, word alignments, language models, reordering models, and hand-engineered features.",
+    why:
+      "The paper’s result was important because a pure neural model outperformed a strong phrase-based SMT system on a large-scale benchmark.",
+    related: [
+      "Phrase-based SMT",
+      "Word Alignment",
+      "Phrase Table",
+      "Language Model",
+      "Reordering Model",
+      "Noisy Channel Model",
+    ],
+  },
+  wmt14: {
+    type: "Dataset",
+    title: "WMT14 English-to-French",
+    body:
+      "WMT14 refers to the 2014 Workshop on Machine Translation benchmark. This paper uses the English-to-French translation task, trained on a selected subset of about 12 million sentence pairs.",
+    why:
+      "Using a large public benchmark made the result credible. The model was not just tested on a small toy dataset.",
+    related: [
+      "Machine Translation",
+      "Parallel Corpus",
+      "Benchmark Dataset",
+      "English-French Translation",
+      "BLEU",
+      "WMT Shared Tasks",
+    ],
+  },
+  bleu: {
+    type: "Metric",
+    title: "BLEU Score",
+    body:
+      "BLEU is an automatic machine translation evaluation metric. It measures n-gram overlap between generated translations and human reference translations.",
+    why:
+      "BLEU allowed the authors to compare their LSTM system against SMT baselines and previous systems. It is useful for system-level comparison, but it does not perfectly measure human translation quality.",
+    related: [
+      "n-gram Precision",
+      "Brevity Penalty",
+      "ROUGE",
+      "METEOR",
+      "chrF",
+      "Human Evaluation",
+    ],
+  },
+  beamSearch: {
+    type: "Algorithm",
+    title: "Beam Search",
+    body:
+      "Beam search is an approximate decoding algorithm. Instead of keeping only the single most likely next word, it keeps several likely partial translations and expands them step by step.",
+    why:
+      "The model defines probabilities over possible translations, but enumerating all translations is impossible. Beam search is a practical compromise.",
+    related: [
+      "Greedy Decoding",
+      "Sampling",
+      "Top-k Sampling",
+      "Nucleus Sampling",
+      "Sequence Decoding",
+      "Search Approximation",
+    ],
+  },
+  rescoring: {
+    type: "Technique",
+    title: "Rescoring",
+    body:
+      "Rescoring means using one model to re-rank candidate outputs generated by another system. In this paper, the SMT system produces 1000 candidate translations, and the LSTM scores them.",
+    why:
+      "The LSTM is useful not only as a direct translation model, but also as a strong sentence-level scoring model.",
+    related: [
+      "Reranking",
+      "1000-best List",
+      "Candidate Generation",
+      "Log Probability",
+      "Language Model Scoring",
+      "Minimum Bayes Risk Decoding",
+    ],
+  },
+  unk: {
+    type: "Token",
+    title: "UNK Token",
+    body:
+      "UNK is a special token used for words outside the model’s vocabulary. Since the LSTM uses a fixed vocabulary, rare or unseen words are replaced with UNK.",
+    why:
+      "This is a limitation of the model. Even with this disadvantage, the neural system still performs strongly.",
+    related: [
+      "Out-of-Vocabulary Words",
+      "Vocabulary Size",
+      "Tokenization",
+      "Subword Tokenization",
+      "Byte Pair Encoding",
+      "WordPiece",
+    ],
+  },
+  reverseSource: {
+    type: "Optimization Trick",
+    title: "Reversing the Source Sentence",
+    body:
+      "The paper reverses the order of words in the source sentence, but not in the target sentence. For example, a b c → α β γ becomes c b a → α β γ.",
+    why:
+      "This creates more short-term dependencies between source and target words, making it easier for gradient descent to learn the mapping.",
+    related: [
+      "Optimization",
+      "Short-Term Dependency",
+      "Long-Term Dependency",
+      "Backpropagation Through Time",
+      "Curriculum Learning",
+      "Data Encoding",
+    ],
+  },
+  conditionalProbability: {
+    type: "Formula",
+    title: "Conditional Sequence Probability",
+    body:
+      "The model estimates the probability of the target sequence given the source sequence. In translation, this means assigning a probability to a French sentence conditioned on an English sentence.",
+    why:
+      "This turns translation into probabilistic sequence modeling. The decoder generates one target token at a time conditioned on the source representation and previous target tokens.",
+    related: [
+      "Conditional Probability",
+      "Autoregressive Modeling",
+      "Softmax",
+      "Maximum Likelihood Estimation",
+      "Language Modeling",
+      "Decoder",
+    ],
+  },
+  chainRule: {
+    type: "Formula Derivation",
+    title: "Chain Rule Factorization",
+    body:
+      "The full target sentence probability is decomposed as a product of next-token probabilities. This follows the chain rule of probability.",
+    why:
+      "This makes sequence generation tractable. The decoder only needs to predict the next token at each step rather than the entire sentence at once.",
+    related: [
+      "Chain Rule",
+      "Autoregressive Generation",
+      "Next-token Prediction",
+      "Teacher Forcing",
+      "Maximum Likelihood",
+      "Cross Entropy Loss",
+    ],
+  },
+  gradientDescent: {
+    type: "Optimization",
+    title: "Gradient Descent",
+    body:
+      "Gradient descent is an optimization method that updates model parameters in the direction that reduces the loss. Neural networks are typically trained using variants of gradient descent.",
+    why:
+      "The source reversal trick matters because it makes the optimization problem easier for gradient-based training. It shortens some dependency paths between input and output tokens.",
+    related: [
+      "Batch Gradient Descent",
+      "Stochastic Gradient Descent",
+      "Mini-batch Gradient Descent",
+      "Momentum",
+      "Adam",
+      "Learning Rate Scheduling",
+      "Gradient Clipping",
+    ],
+  },
+  gradientClipping: {
+    type: "Training Technique",
+    title: "Gradient Clipping",
+    body:
+      "Gradient clipping prevents exploding gradients by scaling down the gradient when its norm becomes too large.",
+    why:
+      "Training large recurrent networks can be unstable. Gradient clipping helps keep LSTM training under control.",
+    related: [
+      "Gradient Descent",
+      "Exploding Gradients",
+      "Backpropagation Through Time",
+      "Norm Clipping",
+      "Training Stability",
+      "RNN Optimization",
+    ],
+  },
+  perplexity: {
+    type: "Metric",
+    title: "Perplexity",
+    body:
+      "Perplexity measures how well a probabilistic model predicts a sequence. Lower perplexity usually means the model assigns higher probability to the correct sequence.",
+    why:
+      "The paper reports that reversing the source sentence reduces perplexity, showing that the reversed setup is easier for the model to learn.",
+    related: [
+      "Language Modeling",
+      "Negative Log-Likelihood",
+      "Cross Entropy",
+      "Probability",
+      "BLEU",
+      "Model Calibration",
+    ],
+  },
+  fixedVector: {
+    type: "Limitation",
+    title: "Fixed-Vector Bottleneck",
+    body:
+      "The encoder compresses the whole source sentence into a single fixed-dimensional vector. This can become a bottleneck, especially for long or complex sentences.",
+    why:
+      "Attention mechanisms later addressed this limitation by allowing the decoder to look back at different encoder states.",
+    related: [
+      "Context Vector",
+      "Attention",
+      "Bahdanau Attention",
+      "Transformer",
+      "Information Bottleneck",
+      "Long Sequence Modeling",
+    ],
+  },
+  attention: {
+    type: "Related Work",
+    title: "Attention",
+    body:
+      "Attention allows the decoder to dynamically focus on different parts of the input sequence while generating each output token.",
+    why:
+      "Attention directly addresses the fixed-vector bottleneck in early Seq2Seq models and later becomes central to Transformers.",
+    related: [
+      "Bahdanau Attention",
+      "Luong Attention",
+      "Self-Attention",
+      "Transformer",
+      "Context Vector",
+      "Alignment",
+    ],
+  },
+};
+
+const results = [
+  {
+    method: "Phrase-based SMT baseline",
+    score: "33.30 BLEU",
+    meaning: "Traditional translation system used as the main baseline.",
+  },
+  {
+    method: "Single forward LSTM",
+    score: "26.17 BLEU",
+    meaning: "A single LSTM trained with normal source word order.",
+  },
+  {
+    method: "Single reversed LSTM",
+    score: "30.59 BLEU",
+    meaning: "Reversing the source sentence gives a large gain.",
+  },
+  {
+    method: "5 reversed LSTMs, beam size 12",
+    score: "34.81 BLEU",
+    meaning: "Best direct neural translation result in the paper.",
+  },
+  {
+    method: "LSTM rescoring SMT 1000-best",
+    score: "36.5 BLEU",
+    meaning: "The LSTM re-ranks SMT candidates and gets close to the best result at the time.",
+  },
+];
+
+const sections = [
+  ["overview", "Overview"],
+  ["story", "Story"],
+  ["abstract", "Abstract"],
+  ["model", "Model"],
+  ["math", "Math"],
+  ["experiments", "Experiments"],
+  ["comparison", "Comparison"],
+  ["impact", "Impact"],
+  ["takeaways", "Takeaways"],
+];
 ---
 
 <html lang="en">
@@ -22,31 +355,842 @@ const faviconPath = `${base.replace(/\/$/, "")}/favicon.ico`;
 
       <nav class="nav">
         <a href={base}>Home</a>
+        <a href="#model">Model</a>
+        <a href="#experiments">Experiments</a>
       </nav>
     </header>
 
-    <main class="paper-page">
-      <article class="paper-article">
-        <p class="eyebrow">NLP · Seq2Seq · 2014</p>
+    <main class="annotated-layout">
+      <aside class="left-rail">
+        <div class="rail-card">
+          <p class="rail-title">Paper Map</p>
+          <nav class="toc">
+            {sections.map(([id, label]) => (
+              <a href={`#${id}`}>{label}</a>
+            ))}
+          </nav>
+        </div>
+      </aside>
 
-        <h1 class="paper-title">
-          Sequence to Sequence Learning with Neural Networks
-        </h1>
+      <article class="reading-column">
+        <header class="paper-hero">
+          <p class="eyebrow">NLP · Seq2Seq · 2014</p>
 
-        <p class="paper-subtitle">
-          This is the reading note for the Seq2Seq paper.
-        </p>
+          <h1 class="paper-title compact-title">
+            Sequence to Sequence Learning with Neural Networks
+          </h1>
 
-        <h2>One-sentence summary</h2>
-        <p>
-          This paper shows that an LSTM encoder-decoder can map one sequence to another sequence.
-        </p>
+          <p class="paper-authors">
+            Ilya Sutskever · Oriol Vinyals · Quoc V. Le
+          </p>
 
-        <h2>Why this paper matters</h2>
-        <p>
-          Add your detailed reading notes here.
-        </p>
+          <div class="paper-links">
+            <a
+              class="paper-link-pill"
+              href="https://arxiv.org/abs/1409.3215"
+              target="_blank"
+              rel="noreferrer"
+            >
+              View original paper on arXiv ↗
+            </a>
+          </div>
+
+          <p class="paper-subtitle">
+            An annotated reading of the landmark paper that helped establish sequence-to-sequence learning as a general framework for neural machine translation and many later NLP generation tasks.
+          </p>
+        </header>
+
+        <section id="overview" class="reading-section">
+          <h2>Overview</h2>
+
+          <div class="guide-box">
+            <strong>Reading guide</strong>
+            <p>
+              The central idea is simple: use one neural network to read a source sequence and another neural network to generate a target sequence. The impact is large because this turns translation into a general end-to-end learning problem.
+            </p>
+          </div>
+
+          <p>
+            This paper helped popularize
+            <button class="anno" data-anno="seq2seq">sequence-to-sequence learning</button>
+            as a general way to map one variable-length sequence into another. The paper’s main example is English-to-French machine translation, but the same abstraction later influenced summarization, dialogue, question answering, speech recognition, and code generation.
+          </p>
+
+          <p>
+            Before this work, machine translation was largely dominated by
+            <button class="anno" data-anno="smt">statistical machine translation</button>.
+            Those systems were strong, but they were complicated pipelines. This paper showed that a large deep neural model could directly compete with those systems.
+          </p>
+        </section>
+
+        <section id="story" class="reading-section">
+          <h2>The story behind the paper</h2>
+
+          <p>
+            In the early 2010s, deep learning had already achieved major results in speech and vision, but full sentence generation in NLP was still difficult. Translation was especially challenging because the input and output sentences can have different lengths and different word orders.
+          </p>
+
+          <p>
+            The authors — Ilya Sutskever, Oriol Vinyals, and Quoc V. Le — proposed a clean alternative to hand-engineered translation pipelines. Their model uses an
+            <button class="anno" data-anno="encoderDecoder">encoder-decoder</button>
+            architecture built from
+            <button class="anno" data-anno="lstm">LSTMs</button>.
+          </p>
+
+          <div class="paper-passage">
+            <span class="passage-label">Paper idea, paraphrased</span>
+            <p>
+              Read the entire input sentence into a fixed-dimensional representation, then generate the output sentence from that representation.
+            </p>
+          </div>
+
+          <p>
+            This was not the first neural translation-related work, but it was one of the clearest demonstrations that a pure neural system could perform large-scale translation directly.
+          </p>
+        </section>
+
+        <section id="abstract" class="reading-section">
+          <h2>Abstract and introduction</h2>
+
+          <div class="guide-box">
+            <strong>What this part is doing</strong>
+            <p>
+              The abstract and introduction motivate the problem: standard neural networks expect fixed-size inputs and outputs, but translation and many other language tasks involve variable-length sequences.
+            </p>
+          </div>
+
+          <p>
+            The paper argues that a domain-independent method for mapping sequences to sequences would be useful. Translation is the main task in the paper, but the framing is much broader.
+          </p>
+
+          <p>
+            The authors evaluate on the
+            <button class="anno" data-anno="wmt14">WMT14 English-to-French dataset</button>
+            and report results using
+            <button class="anno" data-anno="bleu">BLEU score</button>.
+            Their best direct neural system reaches 34.81 BLEU, compared with 33.30 BLEU for the phrase-based SMT baseline.
+          </p>
+
+          <p>
+            The abstract also introduces one of the paper’s most surprising tricks:
+            <button class="anno" data-anno="reverseSource">reversing the source sentence</button>.
+            This simple preprocessing step makes the optimization problem much easier.
+          </p>
+        </section>
+
+        <section id="model" class="reading-section">
+          <h2>The model</h2>
+
+          <div class="guide-box">
+            <strong>What this section explains</strong>
+            <p>
+              The model section defines the LSTM encoder-decoder architecture and shows how it represents the input sentence and generates the output sentence.
+            </p>
+          </div>
+
+          <p>
+            A
+            <button class="anno" data-anno="rnn">vanilla RNN</button>
+            can process sequences, but it struggles with long-range dependencies. This paper uses LSTMs because translation often requires information from earlier words to influence much later output words.
+          </p>
+
+          <p>
+            The model uses one LSTM to read the input sentence and produce a fixed-dimensional vector. A second LSTM then generates the target sentence one word at a time. The output process stops when the model produces an end-of-sentence token.
+          </p>
+
+          <div class="architecture-flow">
+            <span>Input sentence</span>
+            <span>→</span>
+            <span>Encoder LSTM</span>
+            <span>→</span>
+            <span>Sentence vector</span>
+            <span>→</span>
+            <span>Decoder LSTM</span>
+            <span>→</span>
+            <span>Output sentence</span>
+          </div>
+
+          <p>
+            The model has three important implementation choices: two separate LSTMs, multiple LSTM layers, and reversed source sentences.
+          </p>
+
+          <div class="concept-grid">
+            <div class="concept-card">
+              <strong>Separate encoder and decoder</strong>
+              <p>
+                The encoder and decoder use different LSTMs, giving the model more capacity and separating the reading and generation roles.
+              </p>
+            </div>
+
+            <div class="concept-card">
+              <strong>Deep LSTMs</strong>
+              <p>
+                The paper uses four LSTM layers. The authors found deep LSTMs to be significantly better than shallow ones.
+              </p>
+            </div>
+
+            <div class="concept-card">
+              <strong>Source reversal</strong>
+              <p>
+                The source sentence is read backwards, while the target sentence remains in normal order.
+              </p>
+            </div>
+          </div>
+
+          <p>
+            The source reversal trick changes training from:
+          </p>
+
+          <div class="formula-card">
+            <code>a b c → α β γ</code>
+          </div>
+
+          <p>
+            into:
+          </p>
+
+          <div class="formula-card">
+            <code>c b a → α β γ</code>
+          </div>
+
+          <p>
+            This is not a linguistic claim. It is an optimization trick. It makes some source-target dependencies shorter, which helps
+            <button class="anno" data-anno="gradientDescent">gradient descent</button>
+            learn the mapping.
+          </p>
+        </section>
+
+        <section id="math" class="reading-section">
+          <h2>Mathematical formulation</h2>
+
+          <div class="guide-box">
+            <strong>What the formula means</strong>
+            <p>
+              The model does not memorize phrase tables. It assigns a probability to an entire target sequence given a source sequence.
+            </p>
+          </div>
+
+          <p>
+            The model estimates a
+            <button class="anno" data-anno="conditionalProbability">conditional probability</button>:
+          </p>
+
+          <div class="formula-card clickable-formula">
+            <button class="formula-button anno" data-anno="conditionalProbability">
+              <span class="math">
+                p(y<sub>1</sub>, ..., y<sub>T′</sub> | x<sub>1</sub>, ..., x<sub>T</sub>)
+              </span>
+            </button>
+          </div>
+
+          <p>
+            Here, <code>x<sub>1</sub>, ..., x<sub>T</sub></code> is the input sequence, and <code>y<sub>1</sub>, ..., y<sub>T′</sub></code> is the output sequence. Their lengths do not need to match.
+          </p>
+
+          <p>
+            The decoder generates the target sentence one token at a time, so the probability can be decomposed using the
+            <button class="anno" data-anno="chainRule">chain rule</button>:
+          </p>
+
+          <div class="formula-card clickable-formula">
+            <button class="formula-button anno" data-anno="chainRule">
+              <span class="math">
+                p(y<sub>1</sub>, ..., y<sub>T′</sub> | x) =
+                ∏<sub>t=1</sub><sup>T′</sup>
+                p(y<sub>t</sub> | v, y<sub>1</sub>, ..., y<sub>t−1</sub>)
+              </span>
+            </button>
+          </div>
+
+          <p>
+            Intuitively, the model predicts the first target word, then predicts the second target word given the first, then predicts the third given the previous words, and so on.
+          </p>
+
+          <p>
+            During inference, the model tries to find the most likely output sentence. Since trying every possible sentence is impossible, the paper uses
+            <button class="anno" data-anno="beamSearch">beam search</button>.
+          </p>
+        </section>
+
+        <section id="experiments" class="reading-section">
+          <h2>Experiments</h2>
+
+          <div class="guide-box">
+            <strong>What the experiments prove</strong>
+            <p>
+              The experiments show that this is not only a neat architecture. It can perform strongly on a real large-scale translation benchmark.
+            </p>
+          </div>
+
+          <p>
+            The training set contains roughly 12 million sentence pairs. The model uses a fixed vocabulary, so out-of-vocabulary words become
+            <button class="anno" data-anno="unk">UNK tokens</button>.
+            The model is large for its time: four LSTM layers, 1000 cells per layer, 1000-dimensional embeddings, and hundreds of millions of parameters.
+          </p>
+
+          <p>
+            Training recurrent networks can be unstable, so the authors use
+            <button class="anno" data-anno="gradientClipping">gradient clipping</button>.
+            They also batch sentences of similar length together to reduce wasted computation.
+          </p>
+
+          <p>
+            The paper tests two uses of the LSTM. First, direct translation: the model generates the French translation itself. Second,
+            <button class="anno" data-anno="rescoring">rescoring</button>:
+            the model re-ranks the 1000-best translations produced by an SMT system.
+          </p>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Method</th>
+                  <th>Score</th>
+                  <th>Meaning</th>
+                </tr>
+              </thead>
+              <tbody>
+                {results.map((row) => (
+                  <tr>
+                    <td>{row.method}</td>
+                    <td>{row.score}</td>
+                    <td>{row.meaning}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p>
+            Reversing the source sentence also reduces
+            <button class="anno" data-anno="perplexity">perplexity</button>
+            and significantly improves BLEU. This shows that problem encoding can be just as important as model architecture.
+          </p>
+        </section>
+
+        <section id="comparison" class="reading-section">
+          <h2>Why previous methods were not enough</h2>
+
+          <p>
+            Traditional SMT systems were strong, but they were highly engineered. They required many components and assumptions: phrase tables, word alignments, language models, and reordering systems. They were not simple end-to-end neural learners.
+          </p>
+
+          <p>
+            Vanilla RNNs could process sequences, but they struggled with long-term dependencies and were hard to use for tasks where input and output lengths differ. LSTM helped with this problem, but the paper still needed source reversal and careful training.
+          </p>
+
+          <p>
+            Earlier neural approaches often used neural networks as helper modules inside SMT systems. This paper’s major step was to show that a deep LSTM encoder-decoder could directly translate at large scale.
+          </p>
+
+          <p>
+            The paper still has an important limitation:
+            <button class="anno" data-anno="fixedVector">the fixed-vector bottleneck</button>.
+            The encoder compresses the whole source sentence into one vector. Later
+            <button class="anno" data-anno="attention">attention mechanisms</button>
+            would address this limitation.
+          </p>
+        </section>
+
+        <section id="impact" class="reading-section">
+          <h2>Impact and historical position</h2>
+
+          <p>
+            The paper’s historical importance is not just that it beat an SMT baseline. Its deeper contribution is that it helped establish a general modeling language for NLP generation tasks:
+          </p>
+
+          <div class="architecture-flow history-flow">
+            <span>SMT</span>
+            <span>→</span>
+            <span>Seq2Seq</span>
+            <span>→</span>
+            <span>Attention</span>
+            <span>→</span>
+            <span>Transformer</span>
+            <span>→</span>
+            <span>Modern LLMs</span>
+          </div>
+
+          <p>
+            Today, this model is no longer state of the art. It has a fixed-vector bottleneck, limited vocabulary, recurrent computation, and high training cost. But historically, it helped shift NLP from hand-engineered pipelines toward end-to-end sequence learning.
+          </p>
+        </section>
+
+        <section id="takeaways" class="reading-section final-takeaways">
+          <h2>If you remember only three things</h2>
+
+          <ol>
+            <li>
+              Seq2Seq reframed translation and many other NLP tasks as variable-length input-output learning.
+            </li>
+            <li>
+              A deep LSTM encoder-decoder showed that end-to-end neural translation could outperform a strong phrase-based SMT baseline.
+            </li>
+            <li>
+              Reversing the source sentence was a simple but powerful optimization trick that made the model much easier to train.
+            </li>
+          </ol>
+        </section>
       </article>
+
+      <aside class="annotation-rail">
+        <div class="annotation-card" id="annotation-card">
+          <p class="annotation-kicker">Annotation Panel</p>
+          <h2 id="annotation-title">Click a highlighted concept</h2>
+          <p id="annotation-type" class="annotation-type">Term · Formula · Metric · Dataset</p>
+          <p id="annotation-body">
+            As you read the paper text, click highlighted terms, formulas, metrics, datasets, or baselines. The explanation will appear here without interrupting the main reading flow.
+          </p>
+
+          <div id="annotation-why-wrap" class="annotation-extra hidden">
+            <strong>Why it matters here</strong>
+            <p id="annotation-why"></p>
+          </div>
+
+          <div id="annotation-related-wrap" class="annotation-extra hidden">
+            <strong>Related concepts</strong>
+            <div id="annotation-related" class="annotation-tags"></div>
+          </div>
+        </div>
+      </aside>
     </main>
+
+    <script define:vars={{ annotations }}>
+      const buttons = document.querySelectorAll("[data-anno]");
+      const titleEl = document.getElementById("annotation-title");
+      const typeEl = document.getElementById("annotation-type");
+      const bodyEl = document.getElementById("annotation-body");
+      const whyWrap = document.getElementById("annotation-why-wrap");
+      const whyEl = document.getElementById("annotation-why");
+      const relatedWrap = document.getElementById("annotation-related-wrap");
+      const relatedEl = document.getElementById("annotation-related");
+
+      function setAnnotation(key) {
+        const item = annotations[key];
+        if (!item) return;
+
+        titleEl.textContent = item.title;
+        typeEl.textContent = item.type;
+        bodyEl.textContent = item.body;
+
+        if (item.why) {
+          whyWrap.classList.remove("hidden");
+          whyEl.textContent = item.why;
+        } else {
+          whyWrap.classList.add("hidden");
+          whyEl.textContent = "";
+        }
+
+        if (item.related && item.related.length > 0) {
+          relatedWrap.classList.remove("hidden");
+          relatedEl.innerHTML = "";
+          item.related.forEach((tag) => {
+            const span = document.createElement("span");
+            span.className = "related-bubble";
+            span.textContent = tag;
+            relatedEl.appendChild(span);
+          });
+        } else {
+          relatedWrap.classList.add("hidden");
+          relatedEl.innerHTML = "";
+        }
+
+        buttons.forEach((button) => button.classList.remove("active"));
+        document
+          .querySelectorAll(`[data-anno="${key}"]`)
+          .forEach((button) => button.classList.add("active"));
+      }
+
+      buttons.forEach((button) => {
+        button.addEventListener("click", () => {
+          setAnnotation(button.dataset.anno);
+        });
+      });
+
+      setAnnotation("seq2seq");
+    </script>
+
+    <style>
+      .annotated-layout {
+        display: grid;
+        grid-template-columns: 220px minmax(0, 1040px) 420px;
+        gap: 36px;
+        width: min(94vw, 1780px);
+        margin: 0 auto;
+        padding: 52px 0 96px;
+      }
+
+      .left-rail,
+      .annotation-rail {
+        position: sticky;
+        top: 88px;
+        align-self: start;
+      }
+
+      .rail-card,
+      .annotation-card {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+      }
+
+      .rail-card {
+        padding: 18px;
+      }
+
+      .rail-title {
+        margin: 0 0 12px;
+        color: var(--heading);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .toc {
+        display: grid;
+        gap: 8px;
+      }
+
+      .toc a {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.35;
+      }
+
+      .toc a:hover {
+        color: var(--accent);
+      }
+
+      .reading-column {
+        min-width: 0;
+      }
+
+      .paper-hero {
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+        padding: 42px 52px;
+        margin-bottom: 22px;
+      }
+
+      .compact-title {
+        font-size: 2.15rem;
+        line-height: 1.14;
+        letter-spacing: -0.035em;
+        margin-bottom: 10px;
+      }
+
+      .paper-links {
+        margin: 14px 0 18px;
+      }
+
+      .paper-link-pill {
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: #ffffff;
+        color: var(--accent);
+        padding: 8px 14px;
+        font-size: 13px;
+        font-weight: 750;
+        text-decoration: none;
+        transition: transform 0.15s ease, border-color 0.15s ease;
+      }
+
+      .paper-link-pill:hover {
+        border-color: var(--accent);
+        transform: translateY(-1px);
+      }
+
+      .reading-section {
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+        padding: 38px 52px;
+        margin-bottom: 22px;
+      }
+
+      .reading-section h2 {
+        margin-top: 0;
+      }
+
+      .reading-section p {
+        font-size: 16px;
+        line-height: 1.82;
+      }
+
+      .guide-box,
+      .paper-passage {
+        border-radius: 14px;
+        padding: 18px;
+        margin: 20px 0;
+      }
+
+      .guide-box {
+        border: 1px solid var(--line);
+        background: var(--panel-soft);
+      }
+
+      .paper-passage {
+        border-left: 4px solid var(--accent);
+        background: var(--accent-soft);
+      }
+
+      .paper-passage p,
+      .guide-box p {
+        margin-bottom: 0;
+      }
+
+      .passage-label {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .anno {
+        cursor: pointer;
+        border: 0;
+        border-bottom: 1px dotted var(--accent);
+        background: transparent;
+        color: var(--accent);
+        padding: 0 1px;
+        font: inherit;
+        font-weight: 700;
+      }
+
+      .anno:hover,
+      .anno.active {
+        background: var(--accent-soft);
+        border-bottom-style: solid;
+      }
+
+      .architecture-flow,
+      .formula-card {
+        margin: 20px 0;
+      }
+
+      .architecture-flow {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #ffffff;
+        padding: 16px;
+      }
+
+      .architecture-flow span {
+        border-radius: 999px;
+        background: #f0ede7;
+        color: var(--muted-strong);
+        padding: 6px 10px;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .history-flow span {
+        background: var(--accent-soft);
+      }
+
+      .concept-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        margin: 20px 0;
+      }
+
+      .concept-card {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #ffffff;
+        padding: 16px;
+      }
+
+      .concept-card p {
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.65;
+      }
+
+      .formula-card {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #f7f6f2;
+        padding: 18px;
+      }
+
+      .formula-card code {
+        background: transparent;
+        padding: 0;
+        color: var(--heading);
+        font-size: 15px;
+      }
+
+      .formula-button {
+        border: 0;
+        background: transparent;
+        color: var(--heading);
+        cursor: pointer;
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", monospace;
+        font-size: 15px;
+      }
+
+      .math {
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", monospace;
+        color: var(--heading);
+      }
+
+      .math sub,
+      .math sup,
+      code sub,
+      code sup {
+        font-size: 0.68em;
+        line-height: 0;
+        position: relative;
+        vertical-align: baseline;
+      }
+
+      .math sub,
+      code sub {
+        bottom: -0.28em;
+      }
+
+      .math sup,
+      code sup {
+        top: -0.45em;
+      }
+
+      .results-table-wrap {
+        overflow-x: auto;
+        margin: 20px 0;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+      }
+
+      .results-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: #ffffff;
+        font-size: 14px;
+      }
+
+      .results-table th,
+      .results-table td {
+        border-bottom: 1px solid var(--line);
+        padding: 12px 14px;
+        text-align: left;
+      }
+
+      .results-table th {
+        background: var(--panel-soft);
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .results-table tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .annotation-card {
+        padding: 24px;
+      }
+
+      .annotation-kicker {
+        margin: 0 0 8px;
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .annotation-card h2 {
+        margin: 0;
+        color: var(--heading);
+        font-size: 22px;
+        line-height: 1.2;
+        letter-spacing: -0.035em;
+      }
+
+      .annotation-type {
+        display: inline-flex;
+        margin: 12px 0 14px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        padding: 6px 11px;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .annotation-card p {
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.65;
+      }
+
+      .annotation-extra {
+        margin-top: 18px;
+        border-top: 1px solid var(--line);
+        padding-top: 14px;
+      }
+
+      .annotation-extra strong {
+        color: var(--heading);
+        font-size: 13px;
+      }
+
+      .annotation-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .annotation-tags span,
+      .related-bubble {
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid #cfc6b8;
+        border-radius: 999px;
+        background: #f7f2e8;
+        color: #4f5963;
+        padding: 7px 11px;
+        font-size: 12px;
+        font-weight: 750;
+        line-height: 1;
+        white-space: nowrap;
+        box-shadow: 0 1px 0 rgba(43, 50, 56, 0.04);
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      .final-takeaways {
+        background: var(--heading);
+        color: #ffffff;
+      }
+
+      .final-takeaways h2,
+      .final-takeaways li {
+        color: #ffffff;
+      }
+    </style>
   </body>
 </html>
