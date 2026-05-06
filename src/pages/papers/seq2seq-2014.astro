@@ -12,14 +12,7 @@ const annotations = {
       "Seq2Seq means learning a mapping from one variable-length sequence to another. In this paper, the input is an English sentence and the output is a French sentence. The same abstraction later became useful for summarization, dialogue, question answering, speech recognition, and code generation.",
     why:
       "The key historical shift is that many NLP problems can be treated as input sequence → output sequence, instead of being solved by hand-engineered task-specific pipelines.",
-    related: [
-      "Encoder-Decoder",
-      "Neural Machine Translation",
-      "Text Summarization",
-      "Dialogue Systems",
-      "Speech Recognition",
-      "Code Generation",
-    ],
+    related: ["Encoder-Decoder", "Neural Machine Translation", "Text Generation"],
   },
   encoderDecoder: {
     type: "Architecture",
@@ -28,14 +21,7 @@ const annotations = {
       "An encoder reads the input sequence and converts it into an internal representation. A decoder then uses that representation to generate the output sequence. In this paper, both the encoder and decoder are deep LSTMs.",
     why:
       "This structure separates understanding the source sentence from generating the target sentence, while keeping the whole model trainable end-to-end.",
-    related: [
-      "Seq2Seq",
-      "Encoder",
-      "Decoder",
-      "Context Vector",
-      "Attention",
-      "Transformer Encoder-Decoder",
-    ],
+    related: ["Seq2Seq", "Context Vector", "Attention"],
   },
   rnn: {
     type: "Model Family",
@@ -44,14 +30,7 @@ const annotations = {
       "An RNN processes a sequence step by step while maintaining a hidden state. The hidden state is meant to summarize information from previous time steps.",
     why:
       "RNNs are a natural starting point for sequence modeling, but vanilla RNNs struggle with long-range dependencies. This is why the paper uses LSTMs instead.",
-    related: [
-      "Backpropagation Through Time",
-      "Vanishing Gradient",
-      "Exploding Gradient",
-      "LSTM",
-      "GRU",
-      "Sequence Modeling",
-    ],
+    related: ["Backpropagation Through Time", "Vanishing Gradient", "LSTM"],
   },
   lstm: {
     type: "Model",
@@ -60,15 +39,7 @@ const annotations = {
       "LSTM stands for Long Short-Term Memory. It is a type of recurrent neural network designed to handle long-range dependencies better than vanilla RNNs by using gated memory cells.",
     why:
       "A normal RNN struggles to remember information across long time spans. Since translation often requires long-distance dependencies, LSTM is a natural choice.",
-    related: [
-      "RNN",
-      "GRU",
-      "Memory Cell",
-      "Forget Gate",
-      "Input Gate",
-      "Output Gate",
-      "Long-Range Dependency",
-    ],
+    related: ["RNN", "GRU", "Memory Cell", "Long-Range Dependency"],
   },
   smt: {
     type: "Baseline",
@@ -77,14 +48,7 @@ const annotations = {
       "SMT was the dominant machine translation paradigm before neural machine translation. Phrase-based SMT systems used phrase tables, word alignments, language models, reordering models, and hand-engineered features.",
     why:
       "The paper’s result was important because a pure neural model outperformed a strong phrase-based SMT system on a large-scale benchmark.",
-    related: [
-      "Phrase-based SMT",
-      "Word Alignment",
-      "Phrase Table",
-      "Language Model",
-      "Reordering Model",
-      "Noisy Channel Model",
-    ],
+    related: ["Phrase-based SMT", "Word Alignment", "Phrase Table"],
   },
   wmt14: {
     type: "Dataset",
@@ -93,14 +57,7 @@ const annotations = {
       "WMT14 refers to the 2014 Workshop on Machine Translation benchmark. This paper uses the English-to-French translation task, trained on a selected subset of about 12 million sentence pairs.",
     why:
       "Using a large public benchmark made the result credible. The model was not just tested on a small toy dataset.",
-    related: [
-      "Machine Translation",
-      "Parallel Corpus",
-      "Benchmark Dataset",
-      "English-French Translation",
-      "BLEU",
-      "WMT Shared Tasks",
-    ],
+    related: ["Parallel Corpus", "Benchmark Dataset", "BLEU"],
   },
   bleu: {
     type: "Metric",
@@ -109,14 +66,7 @@ const annotations = {
       "BLEU is an automatic machine translation evaluation metric. It measures n-gram overlap between generated translations and human reference translations.",
     why:
       "BLEU allowed the authors to compare their LSTM system against SMT baselines and previous systems. It is useful for system-level comparison, but it does not perfectly measure human translation quality.",
-    related: [
-      "n-gram Precision",
-      "Brevity Penalty",
-      "ROUGE",
-      "METEOR",
-      "chrF",
-      "Human Evaluation",
-    ],
+    related: ["n-gram Precision", "Brevity Penalty", "ROUGE", "METEOR"],
   },
   beamSearch: {
     type: "Algorithm",
@@ -125,14 +75,7 @@ const annotations = {
       "Beam search is an approximate decoding algorithm. Instead of keeping only the single most likely next word, it keeps several likely partial translations and expands them step by step.",
     why:
       "The model defines probabilities over possible translations, but enumerating all translations is impossible. Beam search is a practical compromise.",
-    related: [
-      "Greedy Decoding",
-      "Sampling",
-      "Top-k Sampling",
-      "Nucleus Sampling",
-      "Sequence Decoding",
-      "Search Approximation",
-    ],
+    related: ["Greedy Decoding", "Top-k Sampling", "Nucleus Sampling"],
   },
   rescoring: {
     type: "Technique",
@@ -141,14 +84,7 @@ const annotations = {
       "Rescoring means using one model to re-rank candidate outputs generated by another system. In this paper, the SMT system produces 1000 candidate translations, and the LSTM scores them.",
     why:
       "The LSTM is useful not only as a direct translation model, but also as a strong sentence-level scoring model.",
-    related: [
-      "Reranking",
-      "1000-best List",
-      "Candidate Generation",
-      "Log Probability",
-      "Language Model Scoring",
-      "Minimum Bayes Risk Decoding",
-    ],
+    related: ["Reranking", "1000-best List", "Log Probability"],
   },
   unk: {
     type: "Token",
@@ -157,14 +93,7 @@ const annotations = {
       "UNK is a special token used for words outside the model’s vocabulary. Since the LSTM uses a fixed vocabulary, rare or unseen words are replaced with UNK.",
     why:
       "This is a limitation of the model. Even with this disadvantage, the neural system still performs strongly.",
-    related: [
-      "Out-of-Vocabulary Words",
-      "Vocabulary Size",
-      "Tokenization",
-      "Subword Tokenization",
-      "Byte Pair Encoding",
-      "WordPiece",
-    ],
+    related: ["Out-of-Vocabulary Words", "Subword Tokenization", "Byte Pair Encoding"],
   },
   reverseSource: {
     type: "Optimization Trick",
@@ -173,14 +102,7 @@ const annotations = {
       "The paper reverses the order of words in the source sentence, but not in the target sentence. For example, a b c → α β γ becomes c b a → α β γ.",
     why:
       "This creates more short-term dependencies between source and target words, making it easier for gradient descent to learn the mapping.",
-    related: [
-      "Optimization",
-      "Short-Term Dependency",
-      "Long-Term Dependency",
-      "Backpropagation Through Time",
-      "Curriculum Learning",
-      "Data Encoding",
-    ],
+    related: ["Short-Term Dependency", "Backpropagation Through Time", "Data Encoding"],
   },
   conditionalProbability: {
     type: "Formula",
@@ -189,14 +111,7 @@ const annotations = {
       "The model estimates the probability of the target sequence given the source sequence. In translation, this means assigning a probability to a French sentence conditioned on an English sentence.",
     why:
       "This turns translation into probabilistic sequence modeling. The decoder generates one target token at a time conditioned on the source representation and previous target tokens.",
-    related: [
-      "Conditional Probability",
-      "Autoregressive Modeling",
-      "Softmax",
-      "Maximum Likelihood Estimation",
-      "Language Modeling",
-      "Decoder",
-    ],
+    related: ["Conditional Probability", "Softmax", "Maximum Likelihood"],
   },
   chainRule: {
     type: "Formula Derivation",
@@ -205,14 +120,7 @@ const annotations = {
       "The full target sentence probability is decomposed as a product of next-token probabilities. This follows the chain rule of probability.",
     why:
       "This makes sequence generation tractable. The decoder only needs to predict the next token at each step rather than the entire sentence at once.",
-    related: [
-      "Chain Rule",
-      "Autoregressive Generation",
-      "Next-token Prediction",
-      "Teacher Forcing",
-      "Maximum Likelihood",
-      "Cross Entropy Loss",
-    ],
+    related: ["Autoregressive Generation", "Teacher Forcing", "Cross Entropy Loss"],
   },
   gradientDescent: {
     type: "Optimization",
@@ -221,15 +129,7 @@ const annotations = {
       "Gradient descent is an optimization method that updates model parameters in the direction that reduces the loss. Neural networks are typically trained using variants of gradient descent.",
     why:
       "The source reversal trick matters because it makes the optimization problem easier for gradient-based training. It shortens some dependency paths between input and output tokens.",
-    related: [
-      "Batch Gradient Descent",
-      "Stochastic Gradient Descent",
-      "Mini-batch Gradient Descent",
-      "Momentum",
-      "Adam",
-      "Learning Rate Scheduling",
-      "Gradient Clipping",
-    ],
+    related: ["SGD", "Mini-batch Gradient Descent", "Momentum", "Adam"],
   },
   gradientClipping: {
     type: "Training Technique",
@@ -238,14 +138,7 @@ const annotations = {
       "Gradient clipping prevents exploding gradients by scaling down the gradient when its norm becomes too large.",
     why:
       "Training large recurrent networks can be unstable. Gradient clipping helps keep LSTM training under control.",
-    related: [
-      "Gradient Descent",
-      "Exploding Gradients",
-      "Backpropagation Through Time",
-      "Norm Clipping",
-      "Training Stability",
-      "RNN Optimization",
-    ],
+    related: ["Exploding Gradients", "Backpropagation Through Time", "Training Stability"],
   },
   perplexity: {
     type: "Metric",
@@ -254,14 +147,7 @@ const annotations = {
       "Perplexity measures how well a probabilistic model predicts a sequence. Lower perplexity usually means the model assigns higher probability to the correct sequence.",
     why:
       "The paper reports that reversing the source sentence reduces perplexity, showing that the reversed setup is easier for the model to learn.",
-    related: [
-      "Language Modeling",
-      "Negative Log-Likelihood",
-      "Cross Entropy",
-      "Probability",
-      "BLEU",
-      "Model Calibration",
-    ],
+    related: ["Language Modeling", "Negative Log-Likelihood", "Cross Entropy"],
   },
   fixedVector: {
     type: "Limitation",
@@ -270,14 +156,7 @@ const annotations = {
       "The encoder compresses the whole source sentence into a single fixed-dimensional vector. This can become a bottleneck, especially for long or complex sentences.",
     why:
       "Attention mechanisms later addressed this limitation by allowing the decoder to look back at different encoder states.",
-    related: [
-      "Context Vector",
-      "Attention",
-      "Bahdanau Attention",
-      "Transformer",
-      "Information Bottleneck",
-      "Long Sequence Modeling",
-    ],
+    related: ["Context Vector", "Attention", "Information Bottleneck"],
   },
   attention: {
     type: "Related Work",
@@ -286,14 +165,7 @@ const annotations = {
       "Attention allows the decoder to dynamically focus on different parts of the input sequence while generating each output token.",
     why:
       "Attention directly addresses the fixed-vector bottleneck in early Seq2Seq models and later becomes central to Transformers.",
-    related: [
-      "Bahdanau Attention",
-      "Luong Attention",
-      "Self-Attention",
-      "Transformer",
-      "Context Vector",
-      "Alignment",
-    ],
+    related: ["Bahdanau Attention", "Self-Attention", "Transformer"],
   },
 };
 
@@ -537,17 +409,13 @@ const sections = [
             </div>
           </div>
 
-          <p>
-            The source reversal trick changes training from:
-          </p>
+          <p>The source reversal trick changes training from:</p>
 
           <div class="formula-card">
             <code>a b c → α β γ</code>
           </div>
 
-          <p>
-            into:
-          </p>
+          <p>into:</p>
 
           <div class="formula-card">
             <code>c b a → α β γ</code>
@@ -784,9 +652,10 @@ const sections = [
         if (item.related && item.related.length > 0) {
           relatedWrap.classList.remove("hidden");
           relatedEl.innerHTML = "";
+
           item.related.forEach((tag) => {
             const span = document.createElement("span");
-            span.className = "related-bubble";
+            span.className = "related-chip";
             span.textContent = tag;
             relatedEl.appendChild(span);
           });
@@ -813,11 +682,12 @@ const sections = [
     <style>
       .annotated-layout {
         display: grid;
-        grid-template-columns: 220px minmax(0, 1040px) 420px;
-        gap: 36px;
-        width: min(94vw, 1780px);
+        grid-template-columns: 150px minmax(0, 1fr) 340px;
+        gap: 18px;
+        width: 98vw;
+        max-width: none;
         margin: 0 auto;
-        padding: 52px 0 96px;
+        padding: 32px 0 80px;
       }
 
       .left-rail,
@@ -836,7 +706,7 @@ const sections = [
       }
 
       .rail-card {
-        padding: 18px;
+        padding: 16px;
       }
 
       .rail-title {
@@ -863,6 +733,7 @@ const sections = [
 
       .reading-column {
         min-width: 0;
+        width: 100%;
       }
 
       .paper-hero {
@@ -870,15 +741,16 @@ const sections = [
         border-radius: 20px;
         background: var(--panel);
         box-shadow: var(--shadow);
-        padding: 42px 52px;
-        margin-bottom: 22px;
+        padding: 36px 48px;
+        margin-bottom: 18px;
       }
 
       .compact-title {
-        font-size: 2.15rem;
-        line-height: 1.14;
-        letter-spacing: -0.035em;
+        font-size: 1.9rem;
+        line-height: 1.16;
+        letter-spacing: -0.03em;
         margin-bottom: 10px;
+        max-width: 760px;
       }
 
       .paper-links {
@@ -896,7 +768,9 @@ const sections = [
         font-size: 13px;
         font-weight: 750;
         text-decoration: none;
-        transition: transform 0.15s ease, border-color 0.15s ease;
+        transition:
+          transform 0.15s ease,
+          border-color 0.15s ease;
       }
 
       .paper-link-pill:hover {
@@ -909,8 +783,8 @@ const sections = [
         border-radius: 20px;
         background: var(--panel);
         box-shadow: var(--shadow);
-        padding: 38px 52px;
-        margin-bottom: 22px;
+        padding: 34px 48px;
+        margin-bottom: 18px;
       }
 
       .reading-section h2 {
@@ -1107,7 +981,7 @@ const sections = [
       }
 
       .annotation-card {
-        padding: 24px;
+        padding: 22px;
       }
 
       .annotation-kicker {
@@ -1122,9 +996,9 @@ const sections = [
       .annotation-card h2 {
         margin: 0;
         color: var(--heading);
-        font-size: 22px;
-        line-height: 1.2;
-        letter-spacing: -0.035em;
+        font-size: 20px;
+        line-height: 1.25;
+        letter-spacing: -0.03em;
       }
 
       .annotation-type {
@@ -1141,7 +1015,7 @@ const sections = [
       .annotation-card p {
         color: var(--muted);
         font-size: 14px;
-        line-height: 1.65;
+        line-height: 1.68;
       }
 
       .annotation-extra {
@@ -1163,19 +1037,21 @@ const sections = [
       }
 
       .annotation-tags span,
-      .related-bubble {
+      .related-chip {
         display: inline-flex;
         align-items: center;
-        border: 1px solid #cfc6b8;
+        width: fit-content;
+        max-width: 100%;
+        border: 1px solid #b9c7d8;
         border-radius: 999px;
-        background: #f7f2e8;
-        color: #4f5963;
-        padding: 7px 11px;
+        background: #edf4fb;
+        color: #2f5f8f;
+        padding: 7px 12px;
         font-size: 12px;
-        font-weight: 750;
-        line-height: 1;
+        font-weight: 800;
+        line-height: 1.15;
         white-space: nowrap;
-        box-shadow: 0 1px 0 rgba(43, 50, 56, 0.04);
+        box-shadow: 0 1px 2px rgba(43, 50, 56, 0.06);
       }
 
       .hidden {
