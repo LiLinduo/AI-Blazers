@@ -57,7 +57,7 @@ const annotations = {
       "WMT14 refers to the 2014 Workshop on Machine Translation benchmark. This paper uses the English-to-French translation task, trained on a selected subset of about 12 million sentence pairs.",
     why:
       "Using a large public benchmark made the result credible. The model was not just tested on a small toy dataset.",
-    related: ["Parallel Corpus", "Benchmark Dataset", "BLEU"],
+    related: ["Parallel Corpus", "Benchmark Dataset"],
   },
   bleu: {
     type: "Metric",
@@ -66,7 +66,7 @@ const annotations = {
       "BLEU is an automatic machine translation evaluation metric. It measures n-gram overlap between generated translations and human reference translations.",
     why:
       "BLEU allowed the authors to compare their LSTM system against SMT baselines and previous systems. It is useful for system-level comparison, but it does not perfectly measure human translation quality.",
-    related: ["n-gram Precision", "Brevity Penalty", "ROUGE", "METEOR"],
+    related: ["ROUGE", "METEOR"],
   },
   beamSearch: {
     type: "Algorithm",
@@ -102,7 +102,7 @@ const annotations = {
       "The paper reverses the order of words in the source sentence, but not in the target sentence. For example, a b c → α β γ becomes c b a → α β γ.",
     why:
       "This creates more short-term dependencies between source and target words, making it easier for gradient descent to learn the mapping.",
-    related: ["Short-Term Dependency", "Backpropagation Through Time", "Data Encoding"],
+    related: ["Short-Term Dependency", "Backpropagation Through Time"],
   },
   conditionalProbability: {
     type: "Formula",
@@ -147,7 +147,7 @@ const annotations = {
       "Perplexity measures how well a probabilistic model predicts a sequence. Lower perplexity usually means the model assigns higher probability to the correct sequence.",
     why:
       "The paper reports that reversing the source sentence reduces perplexity, showing that the reversed setup is easier for the model to learn.",
-    related: ["Language Modeling", "Negative Log-Likelihood", "Cross Entropy"],
+    related: ["Negative Log-Likelihood", "Cross Entropy"],
   },
   fixedVector: {
     type: "Limitation",
@@ -649,19 +649,42 @@ const sections = [
           whyEl.textContent = "";
         }
 
-        if (item.related && item.related.length > 0) {
+        if (Array.isArray(item.related) && item.related.length > 0) {
           relatedWrap.classList.remove("hidden");
-          relatedEl.innerHTML = "";
 
-          item.related.forEach((tag) => {
+          const chips = item.related.map((tag) => {
             const span = document.createElement("span");
             span.className = "related-chip";
             span.textContent = tag;
-            relatedEl.appendChild(span);
+
+            // Inline styles are intentional here: these chips are created by
+            // JavaScript, so Astro's scoped CSS attribute is not added to them.
+            // Keeping the critical chip styles inline prevents later scoped CSS
+            // or global styles from flattening them back into plain text.
+            Object.assign(span.style, {
+              display: "inline-flex",
+              alignItems: "center",
+              width: "fit-content",
+              maxWidth: "100%",
+              border: "1px solid #b9c7d8",
+              borderRadius: "999px",
+              background: "#edf4fb",
+              color: "#2f5f8f",
+              padding: "7px 12px",
+              fontSize: "12px",
+              fontWeight: "800",
+              lineHeight: "1.15",
+              whiteSpace: "nowrap",
+              boxShadow: "0 1px 2px rgba(43, 50, 56, 0.06)",
+            });
+
+            return span;
           });
+
+          relatedEl.replaceChildren(...chips);
         } else {
           relatedWrap.classList.add("hidden");
-          relatedEl.innerHTML = "";
+          relatedEl.replaceChildren();
         }
 
         buttons.forEach((button) => button.classList.remove("active"));
@@ -1029,16 +1052,20 @@ const sections = [
         font-size: 13px;
       }
 
-      .annotation-tags {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
+      /* These two selectors are global because the related chips are
+         created dynamically inside the browser with JavaScript. Without
+         :global(), Astro scopes this CSS to compile-time HTML only, so the
+         runtime-created <span> chips can briefly appear styled and then lose
+         the bubble styling after the page finishes loading/hydrating. */
+      :global(#annotation-related.annotation-tags) {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
         margin-top: 12px;
       }
 
-      .annotation-tags span,
-      .related-chip {
-        display: inline-flex;
+      :global(#annotation-related .related-chip) {
+        display: inline-flex !important;
         align-items: center;
         width: fit-content;
         max-width: 100%;
