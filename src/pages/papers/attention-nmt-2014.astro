@@ -1,0 +1,1939 @@
+---
+import "../../styles/global.css";
+
+const base = import.meta.env.BASE_URL;
+const faviconPath = `${base.replace(/\/$/, "")}/favicon.ico`;
+
+const annotations = {
+  nmt: {
+    type: "Field",
+    title: "Neural Machine Translation",
+    body:
+      "Neural machine translation means using a neural network to model translation directly, usually as p(target sentence | source sentence). Instead of relying on phrase tables and many separately tuned components, the model learns representations and generation rules from parallel data.",
+    why:
+      "This paper is an early turning point where neural translation becomes more than a helper feature for statistical systems. The model itself performs translation end-to-end.",
+    related: ["Seq2Seq", "Encoder-Decoder", "Attention", "Parallel Corpus"],
+  },
+  encoder: {
+    type: "Architecture Component",
+    title: "Encoder",
+    body:
+      "The encoder reads the source sentence and turns it into internal vectors. In this paper, the proposed model uses a bidirectional RNN encoder, producing one annotation vector h_j for each source position.",
+    why:
+      "The shift from one final encoder vector to a sequence of encoder annotations is what makes attention possible.",
+    related: ["Bidirectional RNN", "Annotation", "Source Sentence"],
+  },
+  decoder: {
+    type: "Architecture Component",
+    title: "Decoder",
+    body:
+      "The decoder generates the target sentence one token at a time. At step i, it uses the previous target token, its hidden state, and a context vector c_i computed from attention over the source sentence.",
+    why:
+      "The decoder is where alignment becomes dynamic: each generated word can look at a different part of the source sentence.",
+    related: ["Autoregressive Generation", "Context Vector", "Beam Search"],
+  },
+  moses: {
+    type: "Baseline System",
+    title: "Moses",
+    body:
+      "Moses is a strong phrase-based statistical machine translation baseline. It uses phrase tables, word alignments, reordering features, and a target-side language model rather than a fixed neural vocabulary.",
+    why:
+      "It is a tough comparison because it handles rare and unknown words better than early NMT. While RNNsearch maps out-of-vocabulary words to [UNK], Moses can often preserve names, numbers, and rare phrases through copying or phrase-table entries.",
+    related: ["Phrase Table", "Language Model", "UNK", "BLEU"],
+  },
+  rnnencdec: {
+    type: "Baseline Architecture",
+    title: "RNN Encoder-Decoder",
+    body:
+      "The standard RNN encoder-decoder compresses the whole source sentence into a single fixed-length context vector c. The decoder then generates every target token from that same vector.",
+    why:
+      "This is the exact bottleneck that Bahdanau attention addresses: one fixed vector must carry all source information, even for long sentences.",
+    related: ["Fixed-Vector Bottleneck", "RNN"],
+  },
+  fixedVector: {
+    type: "Limitation",
+    title: "Fixed-Vector Bottleneck",
+    body:
+      "A fixed-vector bottleneck occurs when a variable-length source sentence is compressed into a single vector of fixed dimensionality. Longer sentences must squeeze more information through the same narrow channel.",
+    why:
+      "The paper's central claim is that this bottleneck hurts translation quality, especially on long sentences.",
+    related: ["Context Vector", "Information Bottleneck", "Long Sentences"],
+  },
+  attention: {
+    type: "Mechanism",
+    title: "Bahdanau Attention",
+    body:
+      "Bahdanau attention computes a relevance score between the current decoder state and every source annotation, normalizes those scores with softmax, and uses the resulting weights to form a step-specific context vector.",
+    why:
+      "This lets the model softly align and translate at the same time. It is one of the key ancestors of the attention mechanisms used in Transformers.",
+    related: ["Soft Alignment", "Additive Attention", "Transformer"],
+  },
+  softAlignment: {
+    type: "Interpretation",
+    title: "Soft Alignment",
+    body:
+      "Soft alignment means a target token is not forced to align to exactly one source token. Instead, it receives a probability distribution over all source positions.",
+    why:
+      "This makes the model differentiable and flexible. A French article such as l' can attend to both the English word the and the following noun.",
+    related: ["Word Alignment", "Attention Weights", "Differentiability"],
+  },
+  annotation: {
+    type: "Representation",
+    title: "Annotation h_j",
+    body:
+      "An annotation h_j is the encoder's contextual representation of source position j. Because it comes from a bidirectional RNN, it summarizes both left and right context around that source word.",
+    why:
+      "The decoder does not attend to raw words. It attends to contextual source representations.",
+    related: ["Bidirectional RNN", "Hidden State", "Contextual Representation"],
+  },
+  additive: {
+    type: "Scoring Function",
+    title: "Additive Attention Score",
+    body:
+      "The alignment score is computed as v_a^T tanh(W_a s_{i-1} + U_a h_j). This is called additive attention because transformed decoder and encoder states are added before scoring.",
+    why:
+      "Later Transformer attention usually uses dot products. This paper's scoring function is the classic additive form.",
+    related: ["Alignment Model", "Query-Key Matching", "Dot-Product Attention"],
+  },
+  birnn: {
+    type: "Sequence Model",
+    title: "Bidirectional RNN",
+    body:
+      "A bidirectional RNN reads the source sentence in both directions. The forward state summarizes preceding words, and the backward state summarizes following words.",
+    why:
+      "This gives each source annotation access to the whole sentence, not only the prefix before that word.",
+    related: ["Forward RNN", "Backward RNN"],
+  },
+  bleu: {
+    type: "Metric",
+    title: "BLEU Score",
+    body:
+      "BLEU is an automatic machine translation metric based on n-gram overlap between a generated translation and reference translations.",
+    why:
+      "The paper uses BLEU to compare RNNsearch, the RNN encoder-decoder baseline, and Moses.",
+    related: ["Machine Translation Evaluation", "n-gram Overlap"],
+  },
+  unk: {
+    type: "Token",
+    title: "UNK Token",
+    body:
+      "UNK is a special token used for words outside the model vocabulary. This paper keeps only the 30,000 most frequent words in each language, so rare words become UNK.",
+    why:
+      "UNK handling is a major limitation of the paper. RNNsearch looks much stronger when evaluated only on sentences without unknown words.",
+    related: ["Rare Words", "Vocabulary", "Subword Tokenization"],
+  },
+  transformer: {
+    type: "Historical Link",
+    title: "Path to the Transformer",
+    body:
+      "Transformer attention is not identical to Bahdanau attention, but it inherits the idea of dynamically retrieving relevant information from a set of representations.",
+    why:
+      "Bahdanau attention is best viewed as a bridge: RNNs still model sequence order, while attention breaks the single-vector bottleneck.",
+    related: ["Self-Attention", "Cross-Attention", "Positional Encoding"],
+  },
+  contextVector: {
+    type: "Core Variable",
+    title: "Context Vector c_i",
+    body:
+      "A context vector is the source-side information passed to the decoder. In the old encoder-decoder model, there is one fixed context vector c. In Bahdanau attention, each target step i gets its own context vector c_i.",
+    why:
+      "This is the central mathematical shift of the paper: translation no longer depends on one compressed sentence vector, but on a dynamically computed vector assembled from attention weights.",
+    related: ["Fixed-Vector Bottleneck", "Attention Weights", "Source Annotations"],
+  },
+};
+
+const sections = [
+  ["overview", "Overview"],
+  ["story", "Story"],
+  ["problem", "Problem"],
+  ["architecture", "Architecture"],
+  ["math", "Derivation"],
+  ["algorithm", "Algorithm"],
+  ["complexity", "Complexity"],
+  ["experiments", "Experiments"],
+  ["results", "Results"],
+  ["impact", "Impact"],
+  ["takeaways", "Takeaways"],
+];
+
+const results = [
+  {
+    model: "RNNencdec-30",
+    all: "13.93",
+    noUnk: "24.19",
+    meaning: "Fixed-vector encoder-decoder trained on sentences up to length 30.",
+  },
+  {
+    model: "RNNsearch-30",
+    all: "21.50",
+    noUnk: "31.44",
+    meaning: "Attention already gives a large gain under the same length limit.",
+  },
+  {
+    model: "RNNencdec-50",
+    all: "17.82",
+    noUnk: "26.71",
+    meaning: "Training on longer sentences helps, but the fixed vector remains a bottleneck.",
+  },
+  {
+    model: "RNNsearch-50",
+    all: "26.75",
+    noUnk: "34.16",
+    meaning: "Best directly comparable attention model in the main experiments.",
+  },
+  {
+    model: "RNNsearch-50*",
+    all: "28.45",
+    noUnk: "36.15",
+    meaning: "Same architecture trained longer; very strong when unknown words are removed.",
+  },
+  {
+    model: "Moses",
+    all: "33.30",
+    noUnk: "35.63",
+    meaning: "Strong phrase-based SMT baseline using mature translation machinery.",
+  },
+];
+
+const algorithmSteps = [
+  {
+    step: "1",
+    name: "Encode the source",
+    formula: "x_1, ..., x_Tx → h_1, ..., h_Tx",
+    explanation: "A bidirectional RNN creates one contextual annotation for each source position.",
+  },
+  {
+    step: "2",
+    name: "Score each source position",
+    formula: "e_ij = a(s_{i−1}, h_j)",
+    explanation: "For target step i, compare the previous decoder state with every source annotation.",
+  },
+  {
+    step: "3",
+    name: "Normalize scores",
+    formula: "α_ij = softmax_j(e_ij)",
+    explanation: "Convert raw alignment scores into a probability distribution over source positions.",
+  },
+  {
+    step: "4",
+    name: "Build context",
+    formula: "c_i = Σ_j α_ij h_j",
+    explanation: "Compute a weighted average of source annotations for the current target word.",
+  },
+  {
+    step: "5",
+    name: "Generate next word",
+    formula: "p(y_i | y_<i, x) = g(y_{i−1}, s_i, c_i)",
+    explanation: "Use the context vector, previous target word, and decoder state to predict the next token.",
+  },
+];
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Neural Machine Translation by Jointly Learning to Align and Translate · AI Blazers</title>
+    <link rel="icon" href={faviconPath} />
+  </head>
+
+  <body>
+    <header class="site-header">
+      <a class="brand" href={base}>
+        <span class="brand-mark">AI</span>
+        <span>AI Blazers</span>
+      </a>
+
+      <nav class="nav">
+        <a href={base}>Home</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#math">Derivation</a>
+      </nav>
+    </header>
+
+    <main class="annotated-layout">
+      <aside class="left-rail">
+        <div class="rail-card">
+          <p class="rail-title">Paper Map</p>
+          <nav class="toc">
+            {sections.map(([id, label]) => (
+              <a href={`#${id}`}>{label}</a>
+            ))}
+          </nav>
+        </div>
+      </aside>
+
+      <article class="reading-column">
+        <header class="paper-hero">
+          <p class="eyebrow">NLP · Attention · 2014 / ICLR 2015</p>
+
+          <h1 class="paper-title compact-title">
+            Neural Machine Translation by Jointly Learning to Align and Translate
+          </h1>
+
+          <p class="paper-authors">
+            Dzmitry Bahdanau · Kyunghyun Cho · Yoshua Bengio
+          </p>
+
+          <div class="paper-links">
+            <a
+              class="paper-link-pill"
+              href="https://arxiv.org/abs/1409.0473"
+              target="_blank"
+              rel="noreferrer"
+            >
+              View original paper on arXiv ↗
+            </a>
+          </div>
+
+          <p class="paper-subtitle">
+            An annotated reading of the paper that turned word alignment into a differentiable neural mechanism and gave early neural translation a way out of the fixed-vector bottleneck.
+          </p>
+        </header>
+
+        <section id="overview" class="reading-section">
+          <h2>Overview</h2>
+
+          <div class="guide-box">
+            <strong>Reading guide</strong>
+            <p>
+              The paper's core move is simple: instead of compressing the whole source sentence into one vector, let the decoder look back at different source positions while generating each target word.
+            </p>
+          </div>
+
+          <p>
+            This paper is one of the key early works in
+            <button class="anno" data-anno="nmt">neural machine translation</button>.
+            It starts from the standard
+            <button class="anno" data-anno="rnnencdec">RNN encoder-decoder</button>
+            setup and asks a very practical question: what happens when the input sentence is too long to fit comfortably into a single fixed-length vector?
+          </p>
+
+          <p>
+            The answer is what we now call
+            <button class="anno" data-anno="attention">Bahdanau attention</button>.
+            At every decoding step, the model computes a soft distribution over source words, forms a
+            <button class="anno" data-anno="contextVector">context vector</button>
+            from that distribution, and uses it to generate the next target word. In the paper's language,
+            the model learns to align and translate jointly.
+          </p>
+
+          <div class="architecture-flow history-flow">
+            <span>Phrase-based SMT</span>
+            <span>→</span>
+            <span>RNN Encoder-Decoder</span>
+            <span>→</span>
+            <span>Bahdanau Attention</span>
+            <span>→</span>
+            <span>Transformer</span>
+          </div>
+        </section>
+
+        <section id="story" class="reading-section">
+          <h2>The story behind the paper</h2>
+
+          <p>
+            Around 2014, sequence-to-sequence models made a bold promise: translation could be learned end-to-end. An
+            <button class="anno" data-anno="encoder">encoder</button>
+            would read an English sentence, and a
+            <button class="anno" data-anno="decoder">decoder</button>
+            would generate a French sentence. This was much cleaner than traditional phrase-based pipelines.
+          </p>
+
+          <p>
+            But the clean design had a suspiciously narrow bridge in the middle. The encoder had to compress the entire source sentence into one vector <code>c</code>. For short sentences, this can work. For long sentences, it asks one vector to preserve every content word, syntactic dependency, reordering clue, and translation detail.
+          </p>
+
+          <div class="paper-passage">
+            <span class="passage-label">Historical intuition</span>
+            <p>
+              The insight feels obvious today: when translating a word, a model should be able to look back at the relevant source words. The paper's importance is that it made this intuition continuous, differentiable, trainable, and empirically convincing.
+            </p>
+          </div>
+
+          <p>
+            This also reconnects neural translation with a classic machine translation idea: word alignment. Earlier systems often treated alignment as a separate object. Bahdanau, Cho, and Bengio put alignment inside the neural network itself.
+          </p>
+        </section>
+
+        <section id="problem" class="reading-section">
+          <h2>
+            The problem: one
+            <button class="anno heading-anno" data-anno="fixedVector">fixed vector</button>
+            is too narrow
+          </h2>
+
+          <p>
+            The background model represents translation as finding a target sentence <code>y</code> that maximizes <code>p(y | x)</code>. A standard encoder-decoder first maps the source sentence into a context vector:
+          </p>
+
+          <div class="formula-card">
+            <code>x = (x<sub>1</sub>, ..., x<sub>T<sub>x</sub></sub>) → h<sub>1</sub>, ..., h<sub>T<sub>x</sub></sub> → c</code>
+          </div>
+
+          <p>
+            Then the decoder generates the target sentence token by token:
+          </p>
+
+          <div class="formula-card clickable-formula">
+            <button class="formula-button anno" data-anno="fixedVector">
+              <span class="math">
+                p(y<sub>t</sub> | y<sub>1</sub>, ..., y<sub>t−1</sub>, c)
+              </span>
+            </button>
+          </div>
+
+          <p>
+            The important detail is that <code>c</code> is the same for every target position. The model uses the same compressed source representation when generating the first word, the tenth word, and the thirtieth word.
+          </p>
+
+          <div class="concept-grid">
+            <div class="concept-card">
+              <strong>What h means</strong>
+              <p>
+                <code>h<sub>j</sub></code> is an encoder-side hidden state. It represents source position <code>j</code>.
+              </p>
+            </div>
+
+            <div class="concept-card">
+              <strong>What s means</strong>
+              <p>
+                <code>s<sub>i</sub></code> is a decoder-side hidden state. It represents the current generation state at target position <code>i</code>.
+              </p>
+            </div>
+
+            <div class="concept-card">
+              <strong>What c means</strong>
+              <p>
+                In the old model, <code>c</code> is a single fixed context vector. In this paper, it becomes a step-specific <code>c<sub>i</sub></code>.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section id="architecture" class="reading-section">
+          <h2>The model architecture</h2>
+
+          <div class="guide-box">
+            <strong>Main architectural change</strong>
+            <p>
+              The encoder no longer returns only one final vector. It returns a sequence of source annotations. The decoder builds a different context vector from those annotations at each target step.
+            </p>
+          </div>
+
+          <figure class="paper-figure attention-figure">
+            <svg viewBox="0 0 960 500" role="img" aria-labelledby="attn-title attn-desc">
+              <title id="attn-title">Bahdanau attention model architecture</title>
+              <desc id="attn-desc">
+                A simplified Bahdanau attention diagram. The bidirectional encoder produces source annotations.
+                At target step i, the previous decoder state scores the source annotations, softmax produces
+                attention weights, their weighted sum forms the context vector, and the decoder generates the next word.
+              </desc>
+
+              <defs>
+                <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                  <path d="M0,0 L8,4 L0,8 Z" class="arrow-head" />
+                </marker>
+              </defs>
+
+              <!-- Decoder -->
+              <g class="decoder">
+                <text x="590" y="44" class="section-title">Decoder generates one target word at a time</text>
+
+                <rect x="290" y="75" width="86" height="46" rx="11" />
+                <text x="333" y="99">
+                  y<tspan baseline-shift="sub" font-size="10">i−1</tspan>
+                </text>
+
+                <rect x="430" y="75" width="86" height="46" rx="11" />
+                <text x="473" y="99">
+                  s<tspan baseline-shift="sub" font-size="10">i−1</tspan>
+                </text>
+
+                <rect x="570" y="75" width="86" height="46" rx="11" />
+                <text x="613" y="99">
+                  s<tspan baseline-shift="sub" font-size="10">i</tspan>
+                </text>
+
+                <rect x="720" y="75" width="86" height="46" rx="11" />
+                <text x="763" y="99">
+                  y<tspan baseline-shift="sub" font-size="10">i</tspan>
+                </text>
+              </g>
+
+              <!-- Decoder arrows -->
+              <g class="arrows">
+                <line x1="377" y1="98" x2="427" y2="98" />
+                <line x1="517" y1="98" x2="567" y2="98" />
+                <line x1="657" y1="98" x2="717" y2="98" />
+              </g>
+
+              <!-- Attention equations -->
+              <g class="attention-note">
+                <rect x="330" y="164" width="190" height="92" rx="12" class="formula-card" />
+
+                <text x="425" y="188" class="formula-label">
+                  e<tspan baseline-shift="sub" font-size="10">ij</tspan>
+                  = a(s<tspan baseline-shift="sub" font-size="10">i−1</tspan>,
+                  h<tspan baseline-shift="sub" font-size="10">j</tspan>)
+                </text>
+
+                <text x="425" y="214" class="formula-label">
+                  α<tspan baseline-shift="sub" font-size="10">ij</tspan>
+                  = softmax<tspan baseline-shift="sub" font-size="10">j</tspan>
+                  (e<tspan baseline-shift="sub" font-size="10">ij</tspan>)
+                </text>
+
+                <text x="425" y="240" class="formula-label">
+                  c<tspan baseline-shift="sub" font-size="10">i</tspan>
+                  = Σ<tspan baseline-shift="sub" font-size="10">j</tspan>
+                  α<tspan baseline-shift="sub" font-size="10">ij</tspan>
+                  h<tspan baseline-shift="sub" font-size="10">j</tspan>
+                </text>
+              </g>
+
+              <!-- Context vector -->
+              <g class="context">
+                <rect x="570" y="190" width="86" height="52" rx="12" />
+                <text x="613" y="218">
+                  c<tspan baseline-shift="sub" font-size="10">i</tspan>
+                </text>
+              </g>
+
+              <!-- Context to decoder state -->
+              <g class="arrows">
+                <line x1="613" y1="190" x2="613" y2="124" />
+              </g>
+
+              <!-- Encoder annotations -->
+              <g class="encoder-boxes">
+                <rect x="150" y="330" width="86" height="54" rx="10" />
+                <rect x="310" y="330" width="86" height="54" rx="10" />
+                <rect x="470" y="330" width="86" height="54" rx="10" />
+                <rect x="630" y="330" width="86" height="54" rx="10" />
+
+                <text x="193" y="353">
+                  h<tspan baseline-shift="sub" font-size="10">1</tspan>
+                </text>
+
+                <text x="353" y="353">
+                  h<tspan baseline-shift="sub" font-size="10">2</tspan>
+                </text>
+
+                <text x="513" y="353">...</text>
+
+                <text x="673" y="353">
+                  h<tspan baseline-shift="sub" font-size="10">Tx</tspan>
+                </text>
+
+                <text x="193" y="371" class="mini-label">[→h; ←h]</text>
+                <text x="353" y="371" class="mini-label">[→h; ←h]</text>
+                <text x="673" y="371" class="mini-label">[→h; ←h]</text>
+              </g>
+
+              <!-- Source tokens -->
+              <g class="source-tokens">
+                <rect x="150" y="410" width="86" height="42" rx="10" />
+                <rect x="310" y="410" width="86" height="42" rx="10" />
+                <rect x="470" y="410" width="86" height="42" rx="10" />
+                <rect x="630" y="410" width="86" height="42" rx="10" />
+
+                <text x="193" y="433">
+                  x<tspan baseline-shift="sub" font-size="10">1</tspan>
+                </text>
+
+                <text x="353" y="433">
+                  x<tspan baseline-shift="sub" font-size="10">2</tspan>
+                </text>
+
+                <text x="513" y="433">...</text>
+
+                <text x="673" y="433">
+                  x<tspan baseline-shift="sub" font-size="10">Tx</tspan>
+                </text>
+              </g>
+
+              <!-- Source to annotation arrows -->
+              <g class="arrows">
+                <line x1="193" y1="410" x2="193" y2="387" />
+                <line x1="353" y1="410" x2="353" y2="387" />
+                <line x1="513" y1="410" x2="513" y2="387" />
+                <line x1="673" y1="410" x2="673" y2="387" />
+              </g>
+
+              <!-- Weighted-sum lines from annotations to context -->
+              <g class="attention-lines">
+                <line x1="193" y1="330" x2="575" y2="243" />
+                <line x1="353" y1="330" x2="598" y2="243" />
+                <line x1="513" y1="330" x2="613" y2="243" />
+                <line x1="673" y1="330" x2="635" y2="243" />
+              </g>
+
+              <!-- Source sentence label -->
+              <g class="encoder-labels">
+                <text x="480" y="462" class="axis-label">source sentence</text>
+              </g>
+            </svg>
+
+            <figcaption>
+              Simplified model architecture: the bidirectional encoder produces contextual annotations
+              <code>h<sub>j</sub></code>. At target step <code>i</code>, the previous decoder state
+              <code>s<sub>i−1</sub></code> is compared with each source annotation
+              <code>h<sub>j</sub></code> to produce alignment scores
+              <code>e<sub>ij</sub></code>. A softmax over source positions gives attention weights
+              <code>α<sub>ij</sub></code>. For a fixed target step <code>i</code>, these weights form a
+              probability distribution over the source sentence, so
+              <code>Σ<sub>j</sub>α<sub>ij</sub> = 1</code>. Their weighted sum forms
+              <code>c<sub>i</sub> = Σ<sub>j</sub> α<sub>ij</sub>h<sub>j</sub></code>. The decoder then
+              uses <code>c<sub>i</sub></code> to update its state and generate <code>y<sub>i</sub></code>.
+            </figcaption>
+          </figure>
+
+          <p>
+            The encoder is a
+            <button class="anno" data-anno="birnn">bidirectional RNN</button>.
+            For each source word <code>x<sub>j</sub></code>, it concatenates a forward state and a backward state to form an
+            <button class="anno" data-anno="annotation">annotation</button>
+            <code>h<sub>j</sub></code>. This means each source position has access to both preceding and following words.
+          </p>
+
+          <p>
+            The decoder is still recurrent, but it no longer depends on one fixed source vector. It computes a new <code>c<sub>i</sub></code> for every target position. This is why the model is called RNNsearch: each decoding step searches over the source annotations.
+          </p>
+        </section>
+
+        <section id="math" class="reading-section">
+          <h2>Model derivation: from a fixed vector to attention</h2>
+
+          <h3>The old encoder-decoder bottleneck</h3>
+
+          <p>
+            In the earlier RNN Encoder-Decoder architecture, the encoder reads the whole source sentence and compresses it into one
+            fixed-length vector:
+          </p>
+
+          <div class="formula-card">
+            <code>c = q({`{`}h<sub>1</sub>, h<sub>2</sub>, ..., h<sub>T<sub>x</sub></sub>{`}`})</code>
+          </div>
+
+          <p>
+            The decoder then uses this same vector <code>c</code> at every generation step:
+          </p>
+
+          <div class="formula-card">
+            <code>p(y<sub>i</sub> | y<sub>1</sub>, ..., y<sub>i−1</sub>, x) ≈ p(y<sub>i</sub> | y<sub>1</sub>, ..., y<sub>i−1</sub>, c)</code>
+          </div>
+
+          <p>
+            This is elegant, but it creates a bottleneck. A short sentence and a long sentence must both be squeezed into one vector of
+            the same size. When the input sentence becomes long, the decoder may lose access to details in the source sentence, especially
+            details that appear late in the input.
+          </p>
+
+          <p>
+            Bahdanau et al. change exactly this point. Instead of forcing the encoder to produce one universal sentence vector, the encoder
+            produces a sequence of source annotations:
+          </p>
+
+          <div class="formula-card">
+            <code>h<sub>1</sub>, h<sub>2</sub>, ..., h<sub>T<sub>x</sub></sub></code>
+          </div>
+
+          <p>
+            The decoder then constructs a new context vector <code>c<sub>i</sub></code> for each target position <code>i</code>.
+            So the fixed-context form becomes a dynamic-context form:
+          </p>
+
+          <div class="formula-card">
+            <code>p(y<sub>i</sub> | y<sub>1</sub>, ..., y<sub>i−1</sub>, x) = g(y<sub>i−1</sub>, s<sub>i</sub>, c<sub>i</sub>)</code>
+          </div>
+
+          <p>
+            The important new object is
+            <button class="anno" data-anno="contextVector">
+              <code>c<sub>i</sub></code>
+            </button>.
+            It is not reused across the whole sentence. It is computed specifically
+            for generating the <code>i</code>-th target word.
+          </p>
+
+          <div class="paper-passage">
+            <span class="passage-label">Key intuition</span>
+            <p>
+              When generating a French word like <em>signé</em>, the model should mainly look at the English word <em>signed</em>.
+              When generating <em>zone</em> in <em>zone économique européenne</em>, the model may need to jump to <em>Area</em> in
+              <em>European Economic Area</em>. The context vector should therefore depend on the current decoding step.
+            </p>
+          </div>
+
+          <h3>What is a source annotation?</h3>
+
+          <p>
+            A source annotation <code>h<sub>j</sub></code> is not just the embedding of the word <code>x<sub>j</sub></code>. It is a
+            contextual representation produced by a bidirectional RNN. The forward RNN summarizes the words before and up to
+            <code>x<sub>j</sub></code>, while the backward RNN summarizes the words after and down to <code>x<sub>j</sub></code>.
+          </p>
+
+          <div class="formula-card">
+            <code>h<sub>j</sub> = [→h<sub>j</sub>; ←h<sub>j</sub>]</code>
+          </div>
+
+          <p>
+            This means <code>h<sub>j</sub></code> contains information about the whole source sentence, but it is most focused on the
+            neighborhood around position <code>j</code>. This is why the decoder can treat the list
+            <code>h<sub>1</sub>, ..., h<sub>T<sub>x</sub></sub></code> as a memory bank over the source sentence.
+          </p>
+
+          <h3>Step 1: score every source position</h3>
+
+          <p>
+            Before generating <code>y<sub>i</sub></code>, the decoder has a previous hidden state <code>s<sub>i−1</sub></code>. This
+            state summarizes what has already been generated on the target side:
+          </p>
+
+          <div class="formula-card">
+            <code>y<sub>1</sub>, y<sub>2</sub>, ..., y<sub>i−1</sub> → s<sub>i−1</sub></code>
+          </div>
+
+          <p>
+            The model compares this decoder state with every source annotation <code>h<sub>j</sub></code>. The result is an alignment
+            score <code>e<sub>ij</sub></code>:
+          </p>
+
+          <div class="formula-card clickable-formula">
+            <button class="formula-button anno" data-anno="additive">
+              <span class="math">
+                e<sub>ij</sub> = a(s<sub>i−1</sub>, h<sub>j</sub>) = v<sub>a</sub><sup>T</sup> tanh(W<sub>a</sub>s<sub>i−1</sub> + U<sub>a</sub>h<sub>j</sub>)
+              </span>
+            </button>
+          </div>
+
+          <p>
+            This formula is often called <strong>additive attention</strong>. The decoder state and the source annotation are first projected
+            by two learned matrices, <code>W<sub>a</sub></code> and <code>U<sub>a</sub></code>. Their transformed representations are then
+            added together, passed through <code>tanh</code>, and finally projected to a scalar by <code>v<sub>a</sub><sup>T</sup></code>.
+          </p>
+
+          <p>
+            It is important not to read this as a simple word-to-word dictionary match. The score is not comparing a raw target word with a
+            raw source word. It compares:
+          </p>
+
+          <div class="comparison-grid">
+            <div class="comparison-card">
+              <strong>Decoder side</strong>
+              <p>
+                <code>s<sub>i−1</sub></code>: what the model has generated so far and what it may need next.
+              </p>
+            </div>
+            <div class="comparison-card">
+              <strong>Source side</strong>
+              <p>
+                <code>h<sub>j</sub></code>: a contextual representation of source position <code>j</code>.
+              </p>
+            </div>
+          </div>
+
+          <p>
+            The score <code>e<sub>ij</sub></code> asks: <em>given the current state of the translation, how relevant is this source position?</em>
+          </p>
+
+          <h3>Step 2: normalize scores into attention weights</h3>
+
+          <p>
+            The scores <code>e<sub>i1</sub>, e<sub>i2</sub>, ..., e<sub>iT<sub>x</sub></sub></code> are raw numbers. To turn them into
+            a distribution over source positions, the model applies softmax:
+          </p>
+
+          <div class="formula-card">
+            <code>α<sub>ij</sub> = exp(e<sub>ij</sub>) / Σ<sub>k=1</sub><sup>T<sub>x</sub></sup> exp(e<sub>ik</sub>)</code>
+          </div>
+
+          <p>
+            For a fixed target position <code>i</code>, the weights over all source positions sum to one:
+          </p>
+
+          <div class="formula-card">
+            <code>Σ<sub>j=1</sub><sup>T<sub>x</sub></sup> α<sub>ij</sub> = 1</code>
+          </div>
+
+          <p>
+            This is the paper's <button class="anno" data-anno="softAlignment">soft alignment</button>. A target word does not need to
+            choose exactly one source word. It can distribute attention across several source positions.
+          </p>
+
+          <div class="paper-passage">
+            <span class="passage-label">Why soft alignment matters</span>
+            <p>
+              Consider the phrase <em>the man</em> translated as <em>l'homme</em>. A hard alignment might force
+              <em>the</em> to align with <em>l'</em> and <em>man</em> to align with <em>homme</em>. But the correct French article form
+              depends on the noun that follows. Soft alignment lets the model look at both <em>the</em> and <em>man</em> when generating
+              <em>l'</em>.
+            </p>
+          </div>
+
+          <h3>Step 3: build the step-specific context vector</h3>
+
+          <p>
+            Once the model has the attention weights, it forms the current context vector by taking a weighted average of all source annotations:
+          </p>
+
+          <div class="formula-card">
+            <code>c<sub>i</sub> = Σ<sub>j=1</sub><sup>T<sub>x</sub></sup> α<sub>ij</sub> h<sub>j</sub></code>
+          </div>
+
+          <p>
+            This equation is the heart of the model. The context vector <code>c<sub>i</sub></code> is an information packet assembled for
+            the current target word. If one source position is highly relevant, its annotation receives a large weight. If several positions
+            are jointly useful, the model can combine them.
+          </p>
+
+          <p>
+            For example, when translating:
+          </p>
+
+          <div class="paper-passage">
+            <span class="passage-label">Example</span>
+            <p>
+              English: <em>The agreement was signed.</em><br />
+              French: <em>L'accord a été signé.</em>
+            </p>
+          </div>
+
+          <p>
+            When the decoder is about to generate <em>signé</em>, the weight on the English annotation for <em>signed</em> should become
+            large. The resulting <code>c<sub>i</sub></code> then carries the relevant source-side information into the decoder.
+          </p>
+
+          <h3>Step 4: update the decoder and predict the next word</h3>
+
+          <p>
+            After the context vector is built, the decoder updates its hidden state:
+          </p>
+
+          <div class="formula-card">
+            <code>s<sub>i</sub> = f(s<sub>i−1</sub>, y<sub>i−1</sub>, c<sub>i</sub>)</code>
+          </div>
+
+          <p>
+            In the implementation, <code>f</code> is not a plain RNN update. It is a gated recurrent update, similar in spirit to a GRU.
+            The update gate decides how much of the previous state to keep, and the reset gate decides how much previous information should
+            be ignored when forming a candidate new state.
+          </p>
+
+          <div class="formula-card">
+            <code>s<sub>i</sub> = (1 − z<sub>i</sub>) ∘ s<sub>i−1</sub> + z<sub>i</sub> ∘ ŝ<sub>i</sub></code>
+          </div>
+
+          <p>
+            The exact gate equations are implementation details, but they matter conceptually because the attention context
+            <code>c<sub>i</sub></code> participates directly in the recurrent update. The decoder is not merely looking at the source after
+            it updates; the source context helps determine the new decoder state itself.
+          </p>
+
+          <p>
+            Finally, the model predicts the next target word using the previous word, the current decoder state, and the current context:
+          </p>
+
+          <div class="formula-card">
+            <code>p(y<sub>i</sub> | y<sub>&lt;i</sub>, x) = g(y<sub>i−1</sub>, s<sub>i</sub>, c<sub>i</sub>)</code>
+          </div>
+
+          <p>
+            The implementation uses a small neural output network with a maxout layer before the final vocabulary softmax. For understanding
+            the paper, the central chain is:
+          </p>
+
+          <div class="formula-card emphasis-formula">
+            <code>e<sub>ij</sub> → α<sub>ij</sub> → c<sub>i</sub> → s<sub>i</sub> → y<sub>i</sub></code>
+          </div>
+        </section>
+
+        <section id="algorithm" class="reading-section">
+          <h2>Algorithm view</h2>
+
+          <p>
+            The model can be read as a retrieval procedure repeated at every decoding step. The source annotations act like a memory.
+            The decoder state acts like a query. Attention computes which memory entries should be read.
+          </p>
+
+          <div class="results-table-wrap">
+            <table class="results-table algorithm-table formula-table">
+              <thead>
+                <tr>
+                  <th>Step</th>
+                  <th>Operation</th>
+                  <th>Formula</th>
+                  <th>Meaning</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>0</td>
+                  <td>Encode the source sentence</td>
+                  <td>
+                    <div class="formula-card mini-formula">
+                      <code>x<sub>1:T<sub>x</sub></sub> → h<sub>1:T<sub>x</sub></sub></code>
+                    </div>
+                  </td>
+                  <td>
+                    A bidirectional RNN creates one contextual annotation for each source position.
+                  </td>
+                </tr>
+                <tr>
+                  <td>1</td>
+                  <td>Prepare the decoder query</td>
+                  <td>
+                    <div class="formula-card mini-formula">
+                      <code>s<sub>i−1</sub></code>
+                    </div>
+                  </td>
+                  <td>
+                    The previous decoder state summarizes the target prefix already generated.
+                  </td>
+                </tr>
+                <tr>
+                  <td>2</td>
+                  <td>Score every source position</td>
+                  <td>
+                    <div class="formula-card mini-formula">
+                      <code>e<sub>ij</sub> = a(s<sub>i−1</sub>, h<sub>j</sub>)</code>
+                    </div>
+                  </td>
+                  <td>
+                    The alignment model estimates how useful source position <code>j</code> is for generating target word <code>i</code>.
+                  </td>
+                </tr>
+                <tr>
+                  <td>3</td>
+                  <td>Normalize scores</td>
+                  <td>
+                    <div class="formula-card mini-formula">
+                      <code>α<sub>ij</sub> = softmax<sub>j</sub>(e<sub>ij</sub>)</code>
+                    </div>
+                  </td>
+                  <td>
+                    The model turns raw scores into a probability distribution over source positions.
+                  </td>
+                </tr>
+                <tr>
+                  <td>4</td>
+                  <td>Read from source memory</td>
+                  <td>
+                    <div class="formula-card mini-formula">
+                      <code>c<sub>i</sub> = Σ<sub>j</sub> α<sub>ij</sub>h<sub>j</sub></code>
+                    </div>
+                  </td>
+                  <td>
+                    The current context vector is the weighted sum of source annotations.
+                  </td>
+                </tr>
+                <tr>
+                  <td>5</td>
+                  <td>Update decoder state</td>
+                  <td>
+                    <div class="formula-card mini-formula">
+                      <code>s<sub>i</sub> = f(s<sub>i−1</sub>, y<sub>i−1</sub>, c<sub>i</sub>)</code>
+                    </div>
+                  </td>
+                  <td>
+                    The decoder combines target history and the current source context.
+                  </td>
+                </tr>
+                <tr>
+                  <td>6</td>
+                  <td>Predict next target word</td>
+                  <td>
+                    <div class="formula-card mini-formula">
+                      <code>y<sub>i</sub> ∼ p(y<sub>i</sub> | y<sub>&lt;i</sub>, x)</code>
+                    </div>
+                  </td>
+                  <td>
+                    A vocabulary softmax gives probabilities for the next target token.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="paper-passage">
+            <span class="passage-label">A useful mental model</span>
+            <p>
+              Think of the encoder outputs as a bookshelf. Each source annotation <code>h<sub>j</sub></code> is a book about one source
+              position, but with surrounding context included. At each target step, the decoder writes a query, checks every book, assigns
+              relevance weights, and then reads a weighted mixture of the most useful books.
+            </p>
+          </div>
+
+          <h3>Why this is called attention</h3>
+
+          <p>
+            The weights <code>α<sub>ij</sub></code> tell us where the decoder is looking when it generates a target word. If the target
+            word is <em>signé</em>, the weight on <em>signed</em> should be high. If the target phrase changes word order, the attention
+            peak can move non-monotonically. This is why the mechanism is more flexible than a left-to-right alignment pointer.
+          </p>
+
+          <p>
+            At the same time, this is not yet Transformer attention. Bahdanau attention is built on top of RNN encoder-decoder states.
+            It does not need explicit positional encoding, because the bidirectional RNN already injects order information into
+            <code>h<sub>j</sub></code>. Transformer self-attention later removes recurrence, so it needs a separate way to represent position.
+          </p>
+        </section>
+
+        <section id="complexity" class="reading-section">
+          <h2>Computation and complexity</h2>
+
+          <p>
+            The price of attention is that the decoder no longer reads one fixed vector. At every target step, it must compare the current
+            decoder state with every source annotation.
+          </p>
+
+          <p>
+            If the source sentence has length <code>T<sub>x</sub></code> and the target sentence has length <code>T<sub>y</sub></code>,
+            then the model computes one alignment score for each pair <code>(i, j)</code>:
+          </p>
+
+          <div class="formula-card">
+            <code>T<sub>y</sub> × T<sub>x</sub> alignment scores</code>
+          </div>
+
+          <p>
+            This creates a rectangular attention matrix:
+          </p>
+
+          <div class="formula-card">
+            <code>
+              [α<sub>ij</sub>] ∈ ℝ<sup>T<sub>y</sub> × T<sub>x</sub></sup>
+            </code>
+          </div>
+
+          <p>
+            Each row corresponds to one target word. Each column corresponds to one source word. Reading across a row tells us which source
+            positions the model attends to when generating that target word.
+          </p>
+
+          <h3>Cost of additive scoring</h3>
+
+          <p>
+            The alignment score is not just a dot product. It uses a small feedforward network:
+          </p>
+
+          <div class="formula-card">
+            <code>e<sub>ij</sub> = v<sub>a</sub><sup>T</sup> tanh(W<sub>a</sub>s<sub>i−1</sub> + U<sub>a</sub>h<sub>j</sub>)</code>
+          </div>
+
+          <p>
+            If the alignment hidden size is <code>d<sub>a</sub></code>, then computing scores for all target-source pairs costs roughly:
+          </p>
+
+          <div class="formula-card">
+            <code>O(T<sub>y</sub>T<sub>x</sub>d<sub>a</sub>)</code>
+          </div>
+
+          <p>
+            The paper notes that <code>U<sub>a</sub>h<sub>j</sub></code> does not depend on the target step <code>i</code>, so it can be
+            precomputed for all source positions. This reduces repeated work during decoding, but the model still needs to combine each
+            source-side transformed annotation with each decoder state.
+          </p>
+
+          <h3>Cost of building context vectors</h3>
+
+          <p>
+            After the scores are normalized, the context vector is a weighted sum:
+          </p>
+
+          <div class="formula-card">
+            <code>c<sub>i</sub> = Σ<sub>j=1</sub><sup>T<sub>x</sub></sup> α<sub>ij</sub>h<sub>j</sub></code>
+          </div>
+
+          <p>
+            If each annotation has dimension <code>d<sub>h</sub></code>, then building context vectors across the whole target sentence
+            costs roughly:
+          </p>
+
+          <div class="formula-card">
+            <code>O(T<sub>y</sub>T<sub>x</sub>d<sub>h</sub>)</code>
+          </div>
+
+          <h3>Why the tradeoff is worth it</h3>
+
+          <p>
+            Compared with a fixed-context encoder-decoder, this is more expensive. The old model encodes the source once and then reuses
+            one vector <code>c</code>. Bahdanau attention pays an additional matching cost at every target step.
+          </p>
+
+          <div class="comparison-grid">
+            <div class="comparison-card">
+              <strong>Fixed-context encoder-decoder</strong>
+              <p>
+                Cheap access to source information, but all source information must pass through one vector <code>c</code>.
+              </p>
+            </div>
+            <div class="comparison-card">
+              <strong>Attention-based encoder-decoder</strong>
+              <p>
+                More matching work, but the decoder can retrieve different source information at different target steps.
+              </p>
+            </div>
+          </div>
+
+          <p>
+            For machine translation, this cost was acceptable because typical sentences are not extremely long. The benefit was large:
+            the model no longer had to compress a long sentence perfectly into a single fixed-length vector.
+          </p>
+
+          <h3>Relation to Transformer complexity</h3>
+
+          <p>
+            It is useful to distinguish this mechanism from Transformer self-attention. Bahdanau attention in this paper is mainly
+            cross-attention from target steps to source positions, so the interaction pattern is:
+          </p>
+
+          <div class="formula-card">
+            <code>T<sub>y</sub> × T<sub>x</sub></code>
+          </div>
+
+          <p>
+            Transformer self-attention compares tokens within the same sequence. For a sequence of length <code>T</code>, the interaction
+            pattern is:
+          </p>
+
+          <div class="formula-card">
+            <code>T × T</code>
+          </div>
+
+          <p>
+            The conceptual connection is clear: both mechanisms replace a single compressed representation with pairwise relevance
+            computation. The architectural difference is also clear: Bahdanau attention still relies on RNNs for order and state, while
+            Transformer makes attention the main computation and adds positional information separately.
+          </p>
+        </section>
+
+        <section id="experiments" class="reading-section">
+          <h2>Experiment settings</h2>
+
+          <p>
+            The paper evaluates on WMT 2014 English-to-French translation. The authors train on a selected subset of large parallel corpora and evaluate on news-test-2014. They compare the proposed RNNsearch model against the conventional RNN encoder-decoder and against
+            <button class="anno" data-anno="moses">Moses</button>,
+            a strong phrase-based statistical machine translation system.
+          </p>
+
+          <p>
+            Each neural model uses a vocabulary of 30,000 frequent words per language. Words outside the shortlist become
+            <button class="anno" data-anno="unk">UNK tokens</button>.
+            This matters because the paper's model can be strong at sentence modeling while still losing BLEU when rare words appear.
+          </p>
+
+          <div class="concept-grid">
+            <div class="concept-card">
+              <strong>RNNencdec-30 / 50</strong>
+              <p>
+                Baseline encoder-decoder models trained with maximum sentence lengths 30 or 50.
+              </p>
+            </div>
+
+            <div class="concept-card">
+              <strong>RNNsearch-30 / 50</strong>
+              <p>
+                Attention models trained under the same length limits.
+              </p>
+            </div>
+
+            <div class="concept-card">
+              <strong>RNNsearch-50*</strong>
+              <p>
+                Same model family as RNNsearch-50, but trained longer until validation performance stopped improving.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section id="results" class="reading-section">
+          <h2>Results and interpretation</h2>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Model</th>
+                  <th>All BLEU</th>
+                  <th>No UNK BLEU</th>
+                  <th>Interpretation</th>
+                </tr>
+              </thead>
+              <tbody>
+                {results.map((row) => (
+                  <tr>
+                    <td>{row.model}</td>
+                    <td>{row.all}</td>
+                    <td>{row.noUnk}</td>
+                    <td>{row.meaning}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p>
+            The pattern is clear. RNNsearch beats RNNencdec under both length limits. RNNsearch-30 even beats RNNencdec-50, which suggests that the gain is not merely from seeing longer training sentences; the architecture itself is better.
+          </p>
+
+          <p>
+            The No UNK column is especially revealing. RNNsearch-50* reaches 36.15
+            <button class="anno" data-anno="bleu">BLEU</button>
+            on sentences without unknown words, slightly above Moses at 35.63. On the full test set,
+            Moses is still stronger, mostly because rare-word handling remains a weakness of the neural model.
+          </p>
+
+          <p>
+            The length-based analysis in the paper supports the original hypothesis: the conventional encoder-decoder deteriorates sharply as sentence length grows, while RNNsearch is much more robust. This is exactly what we would expect if the fixed vector <code>c</code> were the bottleneck.
+          </p>
+        </section>
+
+        <section id="impact" class="reading-section">
+          <h2>Impact and what is outdated today</h2>
+
+          <p>
+            The original model is not today's state of the art. It is still built on RNNs, it is hard to parallelize compared with Transformers, and it uses a word-level shortlist with UNK tokens. Modern systems usually use Transformer architectures and subword tokenization.
+          </p>
+
+          <p>
+            But the idea did not become outdated. It became common sense. The paper's durable contribution is the principle of dynamic information access: a model should retrieve the relevant parts of a sequence when it needs them, rather than relying on a single compressed representation.
+          </p>
+
+          <p>
+            This is why the paper is best understood as a bridge to
+            <button class="anno" data-anno="transformer">Transformer attention</button>.
+            Bahdanau attention uses RNNs to carry order information and attention to read from the source. Transformers later remove recurrence and make attention the main computation, adding positional information explicitly because self-attention alone does not know token order.
+          </p>
+        </section>
+
+        <section id="takeaways" class="reading-section final-takeaways">
+          <h2>If you remember only three things</h2>
+
+          <ol>
+            <li>
+              The paper identifies the fixed-length context vector as a bottleneck in early neural machine translation.
+            </li>
+            <li>
+              It replaces the single context vector <code>c</code> with step-specific context vectors <code>c<sub>i</sub></code> computed by soft alignment over source annotations.
+            </li>
+            <li>
+              The original RNN architecture is outdated, but the idea of differentiable, dynamic attention became foundational for modern NLP.
+            </li>
+          </ol>
+        </section>
+      </article>
+
+      <aside class="annotation-rail">
+        <div class="annotation-card" id="annotation-card">
+          <p class="annotation-kicker">Annotation Panel</p>
+          <h2 id="annotation-title">Click a highlighted concept</h2>
+          <p id="annotation-type" class="annotation-type">Term · Formula · Metric · Dataset</p>
+          <p id="annotation-body">
+            Click highlighted terms, formulas, metrics, or baselines while reading. The explanation will appear here without interrupting the main text.
+          </p>
+
+          <div id="annotation-why-wrap" class="annotation-extra hidden">
+            <strong>Why it matters here</strong>
+            <p id="annotation-why"></p>
+          </div>
+
+          <div id="annotation-related-wrap" class="annotation-extra hidden">
+            <strong>Related concepts</strong>
+            <div id="annotation-related" class="annotation-tags"></div>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <script define:vars={{ annotations }}>
+      const buttons = document.querySelectorAll("[data-anno]");
+      const titleEl = document.getElementById("annotation-title");
+      const typeEl = document.getElementById("annotation-type");
+      const bodyEl = document.getElementById("annotation-body");
+      const whyWrap = document.getElementById("annotation-why-wrap");
+      const whyEl = document.getElementById("annotation-why");
+      const relatedWrap = document.getElementById("annotation-related-wrap");
+      const relatedEl = document.getElementById("annotation-related");
+
+      function setAnnotation(key) {
+        const item = annotations[key];
+        if (!item) return;
+
+        titleEl.textContent = item.title;
+        typeEl.textContent = item.type;
+        bodyEl.textContent = item.body;
+
+        if (item.why) {
+          whyWrap.classList.remove("hidden");
+          whyEl.textContent = item.why;
+        } else {
+          whyWrap.classList.add("hidden");
+          whyEl.textContent = "";
+        }
+
+        if (Array.isArray(item.related) && item.related.length > 0) {
+          relatedWrap.classList.remove("hidden");
+
+          const chips = item.related.map((tag) => {
+            const span = document.createElement("span");
+            span.className = "related-chip";
+            span.textContent = tag;
+
+            Object.assign(span.style, {
+              display: "inline-flex",
+              alignItems: "center",
+              width: "fit-content",
+              maxWidth: "100%",
+              border: "1px solid #b9c7d8",
+              borderRadius: "999px",
+              background: "#edf4fb",
+              color: "#2f5f8f",
+              padding: "7px 12px",
+              fontSize: "12px",
+              fontWeight: "800",
+              lineHeight: "1.15",
+              whiteSpace: "nowrap",
+              boxShadow: "0 1px 2px rgba(43, 50, 56, 0.06)",
+            });
+
+            return span;
+          });
+
+          relatedEl.replaceChildren(...chips);
+        } else {
+          relatedWrap.classList.add("hidden");
+          relatedEl.replaceChildren();
+        }
+
+        buttons.forEach((button) => button.classList.remove("active"));
+        document
+          .querySelectorAll(`[data-anno="${key}"]`)
+          .forEach((button) => button.classList.add("active"));
+      }
+
+      buttons.forEach((button) => {
+        button.addEventListener("click", () => {
+          setAnnotation(button.dataset.anno);
+        });
+      });
+
+      setAnnotation("attention");
+    </script>
+
+    <style>
+      .annotated-layout {
+        display: grid;
+        grid-template-columns: 160px minmax(760px, 920px) 340px;
+        gap: 22px;
+        width: fit-content;
+        max-width: calc(100vw - 48px);
+        margin: 0 auto;
+        padding: 40px 0 88px;
+      }
+
+      .heading-anno {
+        font-size: inherit;
+        line-height: inherit;
+        font-weight: inherit;
+        letter-spacing: inherit;
+        color: var(--accent);
+      }
+
+      .left-rail,
+      .annotation-rail {
+        position: sticky;
+        top: 88px;
+        align-self: start;
+      }
+
+      .rail-card,
+      .annotation-card {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+      }
+
+      .rail-card {
+        padding: 16px;
+      }
+
+      .rail-title {
+        margin: 0 0 12px;
+        color: var(--heading);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .toc {
+        display: grid;
+        gap: 8px;
+      }
+
+      .toc a {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.35;
+      }
+
+      .toc a:hover {
+        color: var(--accent);
+      }
+
+      .reading-column {
+        min-width: 0;
+        width: 100%;
+      }
+
+      .paper-hero {
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+        padding: 36px 48px;
+        margin-bottom: 18px;
+      }
+
+      .compact-title {
+        font-size: 1.85rem;
+        line-height: 1.16;
+        letter-spacing: -0.03em;
+        margin-bottom: 10px;
+        max-width: 780px;
+      }
+
+      .paper-links {
+        margin: 14px 0 18px;
+      }
+
+      .paper-link-pill {
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: #ffffff;
+        color: var(--accent);
+        padding: 8px 14px;
+        font-size: 13px;
+        font-weight: 750;
+        text-decoration: none;
+        transition:
+          transform 0.15s ease,
+          border-color 0.15s ease;
+      }
+
+      .paper-link-pill:hover {
+        border-color: var(--accent);
+        transform: translateY(-1px);
+      }
+
+      .reading-section {
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+        padding: 34px 48px;
+        margin-bottom: 18px;
+      }
+
+      .reading-section h2 {
+        margin-top: 0;
+      }
+
+      .reading-section h3 {
+        margin-top: 28px;
+        color: var(--heading);
+        font-size: 18px;
+      }
+
+      .reading-section p {
+        font-size: 16px;
+        line-height: 1.82;
+      }
+
+      .guide-box,
+      .paper-passage {
+        border-radius: 14px;
+        padding: 18px;
+        margin: 20px 0;
+      }
+
+      .guide-box {
+        border: 1px solid var(--line);
+        background: var(--panel-soft);
+      }
+
+      .paper-passage {
+        border-left: 4px solid var(--accent);
+        background: var(--accent-soft);
+      }
+
+      .paper-passage p,
+      .guide-box p {
+        margin-bottom: 0;
+      }
+
+      .passage-label {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .anno {
+        cursor: pointer;
+        border: 0;
+        border-bottom: 1px dotted var(--accent);
+        background: transparent;
+        color: var(--accent);
+        padding: 0 1px;
+        font: inherit;
+        font-weight: 700;
+      }
+
+      .anno:hover,
+      .anno.active {
+        background: var(--accent-soft);
+        border-bottom-style: solid;
+      }
+
+      .architecture-flow,
+      .formula-card {
+        margin: 20px 0;
+      }
+
+      .architecture-flow {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #ffffff;
+        padding: 16px;
+      }
+
+      .architecture-flow span {
+        border-radius: 999px;
+        background: #f0ede7;
+        color: var(--muted-strong);
+        padding: 6px 10px;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .history-flow span {
+        background: var(--accent-soft);
+      }
+
+      .concept-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        margin: 20px 0;
+      }
+
+      .concept-card {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #ffffff;
+        padding: 16px;
+      }
+
+      .concept-card p {
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.65;
+      }
+
+      .formula-card {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #f7f6f2;
+        padding: 18px;
+      }
+
+      .formula-card code {
+        background: transparent;
+        padding: 0;
+        color: var(--heading);
+        font-size: 15px;
+      }
+
+      .formula-button {
+        display: inline-flex;
+        width: 100%;
+        border: 0;
+        background: transparent;
+        color: var(--heading);
+        cursor: pointer;
+        text-align: left;
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", monospace;
+        font-size: 15px;
+      }
+
+      .math {
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", monospace;
+        color: var(--heading);
+      }
+
+      .math sub,
+      .math sup,
+      code sub,
+      code sup {
+        font-size: 0.68em;
+        line-height: 0;
+        position: relative;
+        vertical-align: baseline;
+      }
+
+      .math sub,
+      code sub {
+        bottom: -0.28em;
+      }
+
+      .math sup,
+      code sup {
+        top: -0.45em;
+      }
+
+      .comparison-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin: 20px 0;
+      }
+
+      .comparison-card {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #ffffff;
+        padding: 16px;
+      }
+
+      .comparison-card strong {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--heading);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .comparison-card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.65;
+      }
+
+      .results-table-wrap {
+        overflow-x: auto;
+        margin: 20px 0;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+      }
+
+      .results-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: #ffffff;
+        font-size: 14px;
+      }
+
+      .results-table th,
+      .results-table td {
+        border-bottom: 1px solid var(--line);
+        padding: 12px 14px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      .results-table th {
+        background: var(--panel-soft);
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .results-table tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .algorithm-table code {
+        white-space: nowrap;
+      }
+
+      .formula-table td {
+        vertical-align: top;
+      }
+
+      .mini-formula {
+        margin: 0;
+        padding: 0.65rem 0.75rem;
+        font-size: 0.9rem;
+        white-space: nowrap;
+      }
+
+      .mini-formula code {
+        font-size: 13px;
+      }
+
+      .emphasis-formula {
+        border-width: 2px;
+        border-color: rgba(47, 95, 143, 0.45);
+        background: rgba(47, 95, 143, 0.06);
+      }
+
+      .annotation-card {
+        padding: 22px;
+      }
+
+      .annotation-kicker {
+        margin: 0 0 8px;
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .annotation-card h2 {
+        margin: 0;
+        color: var(--heading);
+        font-size: 20px;
+        line-height: 1.25;
+        letter-spacing: -0.03em;
+      }
+
+      .annotation-type {
+        display: inline-flex;
+        margin: 12px 0 14px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        padding: 6px 11px;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .annotation-card p {
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.68;
+      }
+
+      .annotation-extra {
+        margin-top: 18px;
+        border-top: 1px solid var(--line);
+        padding-top: 14px;
+      }
+
+      .annotation-extra strong {
+        color: var(--heading);
+        font-size: 13px;
+      }
+
+      :global(#annotation-related.annotation-tags) {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+        margin-top: 12px;
+      }
+
+      :global(#annotation-related .related-chip) {
+        display: inline-flex !important;
+        align-items: center;
+        width: fit-content;
+        max-width: 100%;
+        border: 1px solid #b9c7d8;
+        border-radius: 999px;
+        background: #edf4fb;
+        color: #2f5f8f;
+        padding: 7px 12px;
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1.15;
+        white-space: nowrap;
+        box-shadow: 0 1px 2px rgba(43, 50, 56, 0.06);
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      .final-takeaways {
+        background: var(--heading);
+        color: #ffffff;
+      }
+
+      .final-takeaways h2,
+      .final-takeaways li {
+        color: #ffffff;
+      }
+
+      .final-takeaways code {
+        color: #ffffff;
+      }
+
+      .paper-figure {
+        margin: 24px 0;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: #ffffff;
+        padding: 18px 18px 14px;
+        box-shadow: 0 8px 20px rgba(43, 50, 56, 0.035);
+      }
+
+      .paper-figure svg {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      .paper-figure figcaption {
+        margin-top: 12px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .attention-figure svg {
+        width: 100%;
+        height: auto;
+      }
+
+      .attention-figure rect {
+        fill: #ffffff;
+        stroke: #2f3437;
+        stroke-width: 1.4;
+      }
+
+      .attention-figure text {
+        fill: #2f3437;
+        font-size: 14px;
+        text-anchor: middle;
+        dominant-baseline: middle;
+      }
+
+      .attention-figure .source-tokens rect {
+        fill: #f7f6f2;
+      }
+
+      .attention-figure .encoder-boxes rect,
+      .attention-figure .context rect,
+      .attention-figure .decoder rect {
+        fill: #ffffff;
+      }
+
+      .attention-figure .formula-card {
+        fill: rgba(47, 95, 143, 0.06);
+        stroke: rgba(47, 52, 55, 0.35);
+        stroke-width: 1.2;
+      }
+
+      .attention-figure .arrows line {
+        stroke: #2f3437;
+        stroke-width: 1.5;
+        marker-end: url(#arrowhead);
+      }
+
+      .attention-figure .attention-lines line {
+        stroke: #2f5f8f;
+        stroke-width: 1.45;
+        opacity: 0.58;
+        marker-end: url(#arrowhead);
+      }
+
+      .attention-figure .arrow-head {
+        fill: #2f3437;
+      }
+
+      .attention-figure .section-title {
+        fill: var(--muted);
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .attention-figure .formula-label {
+        fill: #2f3437;
+        font-size: 13px;
+        font-weight: 500;
+        opacity: 0.88;
+      }
+
+      .attention-figure .mini-label {
+        font-size: 10px;
+        opacity: 0.7;
+      }
+
+      .attention-figure .axis-label {
+        fill: var(--muted);
+        font-size: 13px;
+        font-weight: 600;
+        opacity: 0.85;
+      }
+
+      @media (max-width: 1180px) {
+        .annotated-layout {
+          grid-template-columns: minmax(0, 1fr);
+          width: auto;
+          max-width: 920px;
+          padding: 24px 18px 72px;
+        }
+
+        .left-rail,
+        .annotation-rail {
+          position: static;
+        }
+
+        .left-rail {
+          order: -1;
+        }
+
+        .annotation-rail {
+          order: 2;
+        }
+
+        .concept-grid,
+        .comparison-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .paper-hero,
+        .reading-section {
+          padding: 26px 22px;
+        }
+
+        .compact-title {
+          font-size: 1.55rem;
+        }
+
+        .reading-section p {
+          font-size: 15px;
+          line-height: 1.75;
+        }
+
+        .mini-formula {
+          white-space: normal;
+        }
+
+        .algorithm-table code {
+          white-space: normal;
+        }
+      }
+    </style>
+  </body>
+</html>

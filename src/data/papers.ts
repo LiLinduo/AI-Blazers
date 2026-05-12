@@ -24,7 +24,7 @@ export const papers: Paper[] = [
     subtopic: "Attention",
     year: 2014,
     title: "Neural Machine Translation by Jointly Learning to Align and Translate",
-    status: "soon",
+    status: "ready",
   },
   {
     id: "transformer-2017",
