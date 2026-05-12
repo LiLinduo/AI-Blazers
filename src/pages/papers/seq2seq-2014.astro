@@ -743,10 +743,6 @@ const sections = [
             span.className = "related-chip";
             span.textContent = tag;
 
-            // Inline styles are intentional here: these chips are created by
-            // JavaScript, so Astro's scoped CSS attribute is not added to them.
-            // Keeping the critical chip styles inline prevents later scoped CSS
-            // or global styles from flattening them back into plain text.
             Object.assign(span.style, {
               display: "inline-flex",
               alignItems: "center",
