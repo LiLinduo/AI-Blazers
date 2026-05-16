@@ -32,7 +32,7 @@ export const papers: Paper[] = [
     subtopic: "Transformer",
     year: 2017,
     title: "Attention Is All You Need",
-    status: "soon",
+    status: "ready",
   },
   {
     id: "bert-2018",

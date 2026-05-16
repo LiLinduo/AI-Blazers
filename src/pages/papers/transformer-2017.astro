@@ -1,0 +1,2193 @@
+---
+import "../../styles/global.css";
+
+const base = import.meta.env.BASE_URL;
+const faviconPath = `${base.replace(/\/$/, "")}/favicon.ico`;
+
+const annotations = {
+  transformer: {
+    type: "Architecture",
+    title: "Transformer",
+    body:
+      "A Transformer is an encoder-decoder architecture that replaces recurrent and convolutional sequence processing with attention. In the original paper, the name points to the model's role as a sequence transduction system: it transforms one sequence into another.",
+    why:
+      "The important shift is not that attention exists, but that attention becomes the main path through which tokens exchange information.",
+    related: ["Self-Attention", "Encoder-Decoder", "Sequence Transduction"],
+  },
+  sequenceTransduction: {
+    type: "Task",
+    title: "Sequence Transduction",
+    body:
+      "Sequence transduction means converting one sequence into another sequence, such as English to German, speech to text, or an input sentence to a parsed output.",
+    why:
+      "The original Transformer was proposed for machine translation, not yet as a general chatbot architecture.",
+    related: ["Machine Translation", "Encoder-Decoder", "Autoregressive Generation"],
+  },
+  rnn: {
+    type: "Model Family",
+    title: "RNN",
+    body:
+      "A recurrent neural network processes a sequence step by step. At position t, it updates a hidden state using the current input and the previous hidden state.",
+    why:
+      "This recurrence gives RNNs a natural sense of order, but it also makes training hard to parallelize across positions.",
+    related: ["Hidden State", "Sequential Computation", "LSTM", "GRU"],
+  },
+  lstm: {
+    type: "Model Family",
+    title: "LSTM",
+    body:
+      "Long Short-Term Memory is an RNN variant with gates and a memory cell designed to preserve information over longer distances.",
+    why:
+      "LSTMs were a dominant sequence modeling tool before Transformers, especially in language modeling and translation.",
+    related: ["RNN", "Long-Range Dependencies"],
+  },
+  gru: {
+    type: "Model Family",
+    title: "GRU",
+    body:
+      "A Gated Recurrent Unit is a simpler gated RNN variant. It uses update and reset gates to control how much previous information should be kept.",
+    why:
+      "GRUs, like LSTMs, reduce some weaknesses of vanilla RNNs but still compute positions sequentially.",
+    related: ["RNN", "Gated Recurrence"],
+  },
+  cnn: {
+    type: "Model Family",
+    title: "CNN for Sequences",
+    body:
+      "A convolutional sequence model applies filters over local windows of tokens. Stacking or dilating layers lets information travel farther.",
+    why:
+      "CNNs parallelize better than RNNs, but long-distance interactions still require multiple layers or special dilation patterns.",
+    related: ["ConvS2S", "ByteNet", "Path Length"],
+  },
+  extendedNeuralGpu: {
+    type: "Precursor",
+    title: "Extended Neural GPU",
+    body:
+      "Extended Neural GPU was designed to learn algorithm-like sequence transformations, such as copying, addition, or other symbolic procedures. Instead of processing a sequence strictly left to right like an RNN, it maintains a grid of hidden states and repeatedly updates many positions in parallel.",
+    why:
+      "Its basic idea is to treat sequence processing more like iterative computation over a shared memory grid. Each update mixes local information through convolution-like operations, so the model can gradually transform an input sequence into an output sequence without relying on a single recurrent hidden state moving step by step.",
+    related: ["Parallel State Updates", "Memory-like Grid", "Algorithmic Learning"],
+  },
+  bytenet: {
+    type: "Precursor",
+    title: "ByteNet",
+    body:
+      "ByteNet is a convolutional sequence-to-sequence model built for machine translation. It uses convolutional layers instead of recurrent layers, so different positions in the sequence can be processed in parallel.",
+    why:
+      "Its central idea is dilated convolution: later layers look at tokens with larger gaps between them, which lets the receptive field grow quickly. This allows the model to connect distant positions more efficiently than ordinary local convolution, while still preserving the left-to-right constraint needed for generation.",
+    related: ["Dilated Convolution", "Receptive Field", "Parallel Translation"],
+  },
+  convs2s: {
+    type: "Precursor",
+    title: "ConvS2S",
+    body:
+      "ConvS2S, or Convolutional Sequence-to-Sequence learning, replaces recurrent encoder-decoder layers with stacked convolutional layers. It was proposed as a faster, more parallel alternative to RNN-based translation models.",
+    why:
+      "Its basic idea is to build sentence representations by repeatedly applying local convolutional filters. Lower layers capture nearby context, and deeper layers combine those local patterns into wider context. This makes training parallel across positions, but distant words still need multiple convolutional layers before their information can meet.",
+    related: ["CNN", "Stacked Convolutions", "Machine Translation", "Local Context"],
+  },
+  attention: {
+    type: "Mechanism",
+    title: "Attention",
+    body:
+      "Attention is a soft retrieval mechanism. A query asks for information, keys are matched against the query, and values are combined according to the resulting weights.",
+    why:
+      "In the Transformer, attention is the main way tokens communicate with one another.",
+    related: ["Query", "Key", "Value", "Softmax"],
+  },
+  selfAttention: {
+    type: "Mechanism",
+    title: "Self-Attention",
+    body:
+      "Self-attention means Q, K, and V come from the same sequence. Every token can decide which other tokens in that sequence matter for updating its own representation.",
+    why:
+      "This is the central replacement for recurrence and convolution in the Transformer encoder and decoder.",
+    related: ["QKV", "Long-Range Dependencies", "Multi-Head Attention"],
+  },
+  qkv: {
+    type: "Core Variables",
+    title: "Q, K, V",
+    body:
+      "Q means query, K means key, and V means value. They are learned projections of token representations, not hand-written labels.",
+    why:
+      "Q-K matching decides attention weights; V provides the information that will actually be mixed into the output.",
+    related: ["Linear Projection", "Dot Product", "Soft Retrieval"],
+  },
+  softmax: {
+    type: "Function",
+    title: "Softmax",
+    body:
+      "Softmax converts raw scores into non-negative weights that sum to one. In attention, each row becomes a distribution over positions.",
+    why:
+      "It lets the model softly combine multiple tokens instead of choosing exactly one.",
+    related: ["Attention Weights", "Probability Distribution"],
+  },
+  scaledDot: {
+    type: "Formula",
+    title: "Scaled Dot-Product Attention",
+    body:
+      "The Transformer computes Attention(Q,K,V) = softmax(QK^T / sqrt(d_k))V. The dot products measure Q-K compatibility; scaling stabilizes softmax.",
+    why:
+      "This form is fast because it can be implemented as large matrix multiplications.",
+    related: ["QKV", "Square-Root Scaling", "Matrix Multiplication"],
+  },
+  additive: {
+    type: "Comparison",
+    title: "Additive Attention",
+    body:
+      "Additive attention scores a query-key pair with a small neural network, often written as score(q, k) = vᵀ tanh(Wq q + Wk k).",
+    why:
+      "It can be expressive, but dot-product attention is usually faster and more memory-efficient on modern hardware.",
+    related: ["Bahdanau Attention", "Dot-Product Attention"],
+  },
+  multihead: {
+    type: "Mechanism",
+    title: "Multi-Head Attention",
+    body:
+      "Multi-head attention runs several attention operations in parallel after projecting Q, K, and V into different learned subspaces.",
+    why:
+      "Different heads can attend to different kinds of relationships: local context, long-distance dependencies, syntactic links, or alignment clues.",
+    related: ["Attention Head", "Representation Subspace"],
+  },
+  positionalEncoding: {
+    type: "Representation",
+    title: "Positional Encoding",
+    body:
+      "Positional encoding adds a position-dependent vector to each token embedding. The original paper uses sine and cosine functions at many frequencies.",
+    why:
+      "Because the Transformer has no recurrence or convolution, it must inject order information explicitly.",
+    related: ["Sine", "Cosine", "Relative Position"],
+  },
+  relativePosition: {
+    type: "Interpretation",
+    title: "Relative Position",
+    body:
+      "Relative position means distance or offset between tokens, such as one word before, three words after, or far away.",
+    why:
+      "Sinusoidal encodings make fixed offsets easier to express because PE(pos+k) can be represented as a linear function of PE(pos).",
+    related: ["Positional Encoding", "Offset", "Sequence Order"],
+  },
+  encoder: {
+    type: "Architecture Component",
+    title: "Encoder",
+    body:
+      "The Transformer encoder maps input tokens into contextual representations. Each layer contains self-attention and a position-wise feed-forward network.",
+    why:
+      "The encoder reads the source sequence all at once rather than recurrently.",
+    related: ["Self-Attention", "Feed-Forward Network", "LayerNorm"],
+  },
+  decoder: {
+    type: "Architecture Component",
+    title: "Decoder",
+    body:
+      "The Transformer decoder generates output tokens autoregressively. It uses masked self-attention, encoder-decoder attention, and a feed-forward network.",
+    why:
+      "The decoder must look at previous target tokens and the encoded source sentence while avoiding future target tokens.",
+    related: ["Masked Self-Attention", "Cross-Attention", "Autoregressive"],
+  },
+  crossAttention: {
+    type: "Mechanism",
+    title: "Encoder-Decoder Attention",
+    body:
+      "In encoder-decoder attention, queries come from the decoder, while keys and values come from encoder outputs.",
+    why:
+      "This is where the target side asks: which parts of the source sentence should I look at to produce the next token?",
+    related: ["Alignment", "QKV", "Translation"],
+  },
+  mask: {
+    type: "Training Constraint",
+    title: "Causal Mask",
+    body:
+      "A causal mask prevents a decoder position from attending to future target positions by setting illegal attention scores to negative infinity before softmax.",
+    why:
+      "Without it, the model would see the answer during training.",
+    related: ["Autoregressive Generation", "Decoder", "Softmax"],
+  },
+  residual: {
+    type: "Training Stabilizer",
+    title: "Residual Connection",
+    body:
+      "A residual connection adds a sublayer's input to its output: x + Sublayer(x).",
+    why:
+      "It helps deep networks train because information and gradients can flow around sublayers.",
+    related: ["LayerNorm", "Deep Networks"],
+  },
+  layernorm: {
+    type: "Training Stabilizer",
+    title: "Layer Normalization",
+    body:
+      "Layer normalization normalizes activations within a layer for each example.",
+    why:
+      "The Transformer wraps every sublayer with residual connection plus layer normalization to stabilize stacked attention blocks.",
+    related: ["Residual Connection", "Training Stability"],
+  },
+  ffn: {
+    type: "Architecture Component",
+    title: "Position-wise Feed-Forward Network",
+    body:
+      "The FFN applies the same two-layer MLP to every position independently: max(0, xW₁ + b₁)W₂ + b₂.",
+    why:
+      "Attention mixes information across positions; the FFN then transforms each position's representation nonlinearly.",
+    related: ["ReLU", "MLP"],
+  },
+  bleu: {
+    type: "Metric",
+    title: "BLEU",
+    body:
+      "BLEU is a machine translation metric based on n-gram overlap between a model's output and reference translations.",
+    why:
+      "The paper uses BLEU to compare Transformer with previous translation systems.",
+    related: ["Machine Translation", "Evaluation"],
+  },
+  bpe: {
+    type: "Tokenization",
+    title: "Byte-Pair Encoding",
+    body:
+      "BPE is a subword tokenization method. Rare words can be split into smaller pieces instead of becoming unknown tokens.",
+    why:
+      "The Transformer experiments use subword vocabularies so the model can handle open vocabulary translation better than word-level systems.",
+    related: ["Subword", "Vocabulary", "WordPiece"],
+  },
+  adam: {
+    type: "Optimizer",
+    title: "Adam",
+    body:
+      "Adam is an adaptive gradient optimizer that tracks moving averages of gradients and squared gradients.",
+    why:
+      "The paper uses Adam with a custom warmup and inverse-square-root decay schedule.",
+    related: ["Learning Rate", "Warmup"],
+  },
+  warmup: {
+    type: "Training Schedule",
+    title: "Warmup",
+    body:
+      "Warmup gradually increases the learning rate at the beginning of training before decaying it later.",
+    why:
+      "It prevents early unstable updates when model parameters are still poorly calibrated.",
+    related: ["Adam", "Learning Rate Schedule"],
+  },
+  dropout: {
+    type: "Regularization",
+    title: "Dropout",
+    body:
+      "Dropout randomly drops activations during training to reduce overfitting.",
+    why:
+      "The paper applies dropout after sublayers and after adding embeddings and positional encodings.",
+    related: ["Regularization", "Overfitting"],
+  },
+  labelSmoothing: {
+    type: "Regularization",
+    title: "Label Smoothing",
+    body:
+      "Label smoothing replaces a one-hot target with a softer target distribution.",
+    why:
+      "It makes the model less overconfident; perplexity may worsen while BLEU improves.",
+    related: ["Calibration", "Cross-Entropy"],
+  },
+  checkpointAveraging: {
+    type: "Evaluation Trick",
+    title: "Checkpoint Averaging",
+    body:
+      "Checkpoint averaging averages the weights of several saved checkpoints near the end of training.",
+    why:
+      "It often gives a smoother, more robust model than choosing one final checkpoint.",
+    related: ["Model Averaging", "Evaluation"],
+  },
+  beamSearch: {
+    type: "Decoding",
+    title: "Beam Search",
+    body:
+      "Beam search keeps several partial translations at each decoding step instead of greedily choosing one token.",
+    why:
+      "The paper uses beam size 4 and a length penalty to produce final translations.",
+    related: ["Decoding", "Length Penalty"],
+  },
+  gpt: {
+    type: "Historical Link",
+    title: "GPT",
+    body:
+      "GPT stands for Generative Pre-trained Transformer. It uses a decoder-only Transformer trained with a next-token prediction objective.",
+    why:
+      "ChatGPT descends from this decoder-only Transformer line, not from the original encoder-decoder translation setup exactly.",
+    related: ["Decoder-only Transformer", "Language Modeling", "ChatGPT"],
+  },
+  bert: {
+    type: "Historical Link",
+    title: "BERT",
+    body:
+      "BERT is an encoder-only Transformer for bidirectional language understanding.",
+    why:
+      "Google used BERT in Search, showing that Transformer impact was not limited to OpenAI or chatbots.",
+    related: ["Encoder-only Transformer", "Search", "Language Understanding"],
+  },
+  chatgpt: {
+    type: "Historical Link",
+    title: "ChatGPT",
+    body:
+      "ChatGPT is a conversational product built on GPT-style Transformer language models and instruction-following fine-tuning.",
+    why:
+      "The leap from Transformer paper to ChatGPT required scale, data, alignment, product design, and deployment choices.",
+    related: ["GPT", "RLHF", "Productization"],
+  },
+};
+
+const sections = [
+  ["overview", "Overview"],
+  ["story", "Why this paper mattered"],
+  ["problem", "The bottleneck it attacked"],
+  ["architecture", "The architecture as a whole"],
+  ["attention", "Attention, QKV, and scaling"],
+  ["multihead", "Multi-head attention"],
+  ["position", "Positional encoding"],
+  ["why", "Why self-attention"],
+  ["training", "Training recipe"],
+  ["results", "Results and comparisons"],
+  ["figures", "Appendix visualizations"],
+  ["impact", "Impact and afterlife"],
+  ["takeaways", "Takeaways"],
+];
+
+const architectureSteps = [
+  {
+    title: "1. Add content and position",
+    text: "Token embeddings represent what a token is; positional encodings represent where it appears.",
+  },
+  {
+    title: "2. Encode the source",
+    text: "Each encoder layer lets every source token look at all source tokens, then transforms each position through an FFN.",
+  },
+  {
+    title: "3. Decode causally",
+    text: "The decoder sees previous target tokens through a causal mask, then queries the encoder output.",
+  },
+  {
+    title: "4. Predict the next token",
+    text: "A linear layer and softmax turn decoder states into next-token probabilities.",
+  },
+];
+
+const qkvRows = [
+  { symbol: "Q", name: "Query", meaning: "What this position is looking for." },
+  { symbol: "K", name: "Key", meaning: "How each candidate position advertises what it contains." },
+  { symbol: "V", name: "Value", meaning: "The information actually retrieved and mixed into the output." },
+  { symbol: "d_k", name: "Key/query dimension", meaning: "The width of the query-key matching space for one head." },
+];
+
+const multiHeadRows = [
+  {
+    symbol: "h",
+    meaning: "The number of attention heads. The base Transformer uses h = 8.",
+  },
+  {
+    symbol: "head<sub>i</sub>",
+    meaning: "The output of the i-th attention head.",
+  },
+  {
+    symbol: "W<sub>i</sub><sup>Q</sup>",
+    meaning: "The learned projection matrix that maps queries into the i-th head's query subspace.",
+  },
+  {
+    symbol: "W<sub>i</sub><sup>K</sup>",
+    meaning: "The learned projection matrix that maps keys into the i-th head's key subspace.",
+  },
+  {
+    symbol: "W<sub>i</sub><sup>V</sup>",
+    meaning: "The learned projection matrix that maps values into the i-th head's value subspace.",
+  },
+  {
+    symbol: "W<sup>O</sup>",
+    meaning: "The learned output projection that mixes the concatenated heads back into d<sub>model</sub> dimensions.",
+  },
+  {
+    symbol: "Concat(...)",
+    meaning: "Concatenation of all attention head outputs along the feature dimension.",
+  },
+];
+
+const complexityRows = [
+  {
+    layer: "Self-attention",
+    complexity: "O(n²d)",
+    sequential: "O(1)",
+    path: "O(1)",
+    reason:
+      "All tokens compare with all tokens; every pair can communicate directly.",
+  },
+  {
+    layer: "Recurrent",
+    complexity: "O(nd²)",
+    sequential: "O(n)",
+    path: "O(n)",
+    reason:
+      "Each hidden state depends on the previous hidden state, so computation remains sequential.",
+  },
+  {
+    layer: "Convolutional",
+    complexity: "O(knd²)",
+    sequential: "O(1)",
+    path: "O(log<sub>k</sub> n)",
+    reason:
+      "Positions are parallel, but distant tokens need enough layers for the receptive field to reach them.",
+  },
+  {
+    layer: "Restricted self-attention",
+    complexity: "O(rnd)",
+    sequential: "O(1)",
+    path: "O(n / r)",
+    reason:
+      "Each token attends only to a neighborhood of size r, reducing cost but increasing the path between faraway positions.",
+  },
+];
+
+const trainingConfig = [
+  {
+    item: "Datasets",
+    value:
+      "WMT 2014 English-German: about 4.5M sentence pairs; WMT 2014 English-French: about 36M sentence pairs.",
+  },
+  {
+    item: "Tokenization",
+    value:
+      "English-German uses byte-pair encoding with a shared source-target vocabulary of about 37K tokens; English-French uses a 32K word-piece vocabulary.",
+  },
+  {
+    item: "Batching",
+    value:
+      "Sentence pairs are batched by approximate length; each batch contains about 25K source tokens and 25K target tokens.",
+  },
+  {
+    item: "Hardware",
+    value: "8 NVIDIA P100 GPUs.",
+  },
+  {
+    item: "Base model",
+    value:
+      "100K steps, about 12 hours; <code>d<sub>model</sub> = 512</code>, <code>d<sub>ff</sub> = 2048</code>, <code>h = 8</code>.",
+  },
+  {
+    item: "Big model",
+    value:
+      "300K steps, about 3.5 days; <code>d<sub>model</sub> = 1024</code>, <code>d<sub>ff</sub> = 4096</code>, <code>h = 16</code>.",
+  },
+  {
+    item: "Optimizer",
+    value:
+      "Adam with <code>β<sub>1</sub> = 0.9</code>, <code>β<sub>2</sub> = 0.98</code>, and <code>ϵ = 10<sup>−9</sup></code>.",
+  },
+  {
+    item: "Regularization",
+    value:
+      "Residual dropout, embedding-plus-position dropout, and label smoothing with <code>ϵ<sub>ls</sub> = 0.1</code>.",
+  },
+];
+
+const resultRows = [
+  { model: "GNMT + RL Ensemble", ende: "26.30", enfr: "41.16", cost: "High", note: "Strong recurrent Google NMT system with reinforcement-learning tuning and ensembling." },
+  { model: "ConvS2S Ensemble", ende: "26.36", enfr: "41.29", cost: "High", note: "Convolutional sequence-to-sequence model; highly competitive pre-Transformer baseline." },
+  { model: "Transformer base", ende: "27.3", enfr: "38.1", cost: "Low", note: "Already beats previous EN-DE systems at a fraction of training cost." },
+  { model: "Transformer big", ende: "28.4", enfr: "41.8", cost: "Moderate", note: "Best reported results in the paper; EN-DE beats previous ensembles by more than 2 BLEU." },
+];
+
+const modelGlossary = [
+  { name: "ByteNet", text: "A convolutional model using dilated convolutions to process sequences with better parallelism than RNNs." },
+  { name: "Deep-Att + PosUnk", text: "A deep attention-based translation system with a technique for handling unknown words by using source positions." },
+  { name: "GNMT + RL", text: "Google Neural Machine Translation, a strong recurrent encoder-decoder system, here further tuned with reinforcement learning." },
+  { name: "ConvS2S", text: "A convolutional sequence-to-sequence model that replaces recurrent layers with convolutional blocks." },
+  { name: "MoE", text: "Mixture-of-Experts, a sparsely gated model that activates different expert subnetworks for different inputs." },
+  { name: "Ensemble", text: "A group of models combined at inference time; usually stronger but more expensive than one model." },
+];
+
+const figureRows = [
+  { fig: "Figure 3", topic: "Long-distance dependency", text: "Heads attending from “making” help connect the phrase “making ... more difficult.”" },
+  { fig: "Figure 4", topic: "Anaphora resolution", text: "Attention from “its” sharply points back toward “The Law,” suggesting pronoun resolution." },
+  { fig: "Figure 5", topic: "Sentence structure", text: "Different heads show different structural patterns, supporting the multi-head interpretation." },
+];
+
+const timelineRows = [
+  { year: "2014–2016", event: "Seq2seq, Bahdanau attention, Luong attention, GNMT, ConvS2S make neural translation competitive." },
+  { year: "2017", event: "Google researchers publish Attention Is All You Need and introduce the Transformer." },
+  { year: "2018–2019", event: "BERT and GPT-style models show that Transformers are not just translation models." },
+  { year: "2022+", event: "ChatGPT turns decoder-only Transformers plus instruction tuning and product design into a mass-market interface." },
+];
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Attention Is All You Need · AI Blazers</title>
+    <link rel="icon" href={faviconPath} />
+  </head>
+
+  <body>
+    <header class="site-header">
+      <a class="brand" href={base}>
+        <span class="brand-mark">AI</span>
+        <span>AI Blazers</span>
+      </a>
+
+      <nav class="nav">
+        <a href={base}>Home</a>
+      </nav>
+    </header>
+
+    <main class="annotated-layout">
+      <aside class="left-rail">
+        <div class="rail-card">
+          <p class="rail-title">Paper Map</p>
+          <nav class="toc">
+            {sections.map(([id, label]) => (
+              <a href={`#${id}`}>{label}</a>
+            ))}
+          </nav>
+        </div>
+      </aside>
+
+      <article class="reading-column">
+        <header class="paper-hero">
+          <p class="eyebrow">NLP · Transformer · 2017 / NeurIPS</p>
+
+          <h1 class="paper-title compact-title">Attention Is All You Need</h1>
+
+          <p class="paper-authors">
+            Ashish Vaswani · Noam Shazeer · Niki Parmar · Jakob Uszkoreit · Llion Jones · Aidan N. Gomez · Łukasz Kaiser · Illia Polosukhin
+          </p>
+
+          <div class="paper-links">
+            <a
+              class="paper-link-pill"
+              href="https://arxiv.org/abs/1706.03762"
+              target="_blank"
+              rel="noreferrer"
+            >
+              View original paper on arXiv ↗
+            </a>
+          </div>
+
+          <p class="paper-subtitle">
+            A structured reading of the paper that moved attention from a helpful add-on to the main computational engine of modern language models.
+          </p>
+        </header>
+
+        <section id="overview" class="reading-section">
+          <h2>Overview</h2>
+
+          <div class="guide-box">
+            <strong>Reading guide</strong>
+            <p>
+              This paper is best understood as a turning point in how sequence models move information.
+              Earlier models processed a sentence through recurrence or local convolution; the Transformer
+              instead lets each token directly look up relevant information from the rest of the sequence.
+              The central question is not simply “what modules does it use?”, but “how does information
+              travel between words?”
+            </p>
+          </div>
+
+          <p>
+            <em>Attention Is All You Need</em> introduces the
+            <button class="anno" data-anno="transformer">Transformer</button>,
+            a model for
+            <button class="anno" data-anno="sequenceTransduction">sequence transduction</button>
+            that removes recurrence and convolution from the main architecture. The paper evaluates this
+            idea on machine translation, but its impact reaches far beyond translation: the same architectural
+            principle later becomes the foundation of BERT, GPT-style models, many vision models, and the
+            modern large language model ecosystem.
+          </p>
+
+          <p>
+            The title is intentionally bold, but it should be read carefully. The Transformer is not made of
+            attention alone. It still relies on embeddings, positional encodings, feed-forward networks,
+            residual connections, layer normalization, dropout, and a final softmax layer. What the title
+            really argues is more specific: for modeling relationships between positions in a sequence,
+            attention can replace the recurrent and convolutional machinery that dominated earlier neural
+            sequence models.
+          </p>
+
+          <div class="architecture-flow history-flow">
+            <span>RNN / LSTM / GRU</span>
+            <span>→</span>
+            <span>CNN sequence models</span>
+            <span>→</span>
+            <span>Attention as helper</span>
+            <span>→</span>
+            <span>Attention as architecture</span>
+          </div>
+        </section>
+
+        <section id="story" class="reading-section">
+          <h2>Why this paper mattered</h2>
+
+          <p>
+            Before the Transformer, strong translation systems usually depended on
+            <button class="anno" data-anno="rnn">RNNs</button>,
+            especially <button class="anno" data-anno="lstm">LSTMs</button> and
+            <button class="anno" data-anno="gru">GRUs</button>. These models had a natural way to process order:
+            read token 1, then token 2, then token 3. That was elegant, and it matched our intuition about language as
+            a sequence. But it also created a computational bottleneck. The hidden state at position <code>t</code>
+            could not be fully computed until position <code>t−1</code> was done, which made long sequences harder to
+            parallelize during training.
+          </p>
+
+          <p>
+            There was already a counter-movement. Models such as
+            <button class="anno" data-anno="extendedNeuralGpu">Extended Neural GPU</button>,
+            <button class="anno" data-anno="bytenet">ByteNet</button>, and
+            <button class="anno" data-anno="convs2s">ConvS2S</button> tried to reduce sequential computation with
+            <button class="anno" data-anno="cnn">convolutional sequence models</button>. They replaced the step-by-step
+            recurrence of RNNs with convolutional computation that could be applied to many positions at once.
+          </p>
+
+          <p>
+            The key difference was how far information could travel in one layer.
+            <button class="anno" data-anno="convs2s">ConvS2S</button> used stacked convolutions: fast and parallel, but still
+            local, so distant words needed multiple layers to influence each other.
+            <button class="anno" data-anno="bytenet">ByteNet</button> used dilated convolutions to expand the receptive field
+            more quickly, reducing the path between faraway positions to a logarithmic scale.
+            <button class="anno" data-anno="extendedNeuralGpu">Extended Neural GPU</button> belonged to a related line of work
+            that treated sequence processing more like repeated updates over a parallel memory-like grid. These models were
+            important because they showed that sequence modeling did not have to be strictly recurrent. But they still did
+            not make every token globally visible to every other token in a single step.
+          </p>
+
+          <p>
+            The Transformer asks a more radical question: if attention already lets a decoder look directly
+            at any source position, why not let every token look directly at every other token? That is the
+            step from attention as an alignment tool to
+            <button class="anno" data-anno="selfAttention">self-attention</button> as the core architecture.
+          </p>
+
+          <div class="paper-passage">
+            <span class="passage-label">Historical aside</span>
+            <p>
+              There is an interesting twist in the story. The Transformer came from Google, and Google quickly used
+              Transformer-based models in major systems, including BERT for Search. Yet the first Transformer-based product
+              that many people experienced as a cultural event was ChatGPT, released by OpenAI. That did not happen simply
+              because OpenAI had a different architecture. GPT was also a Transformer. The difference was in how the model
+              was scaled, trained as a decoder-only language model, adapted to follow instructions, aligned with human
+              feedback, and finally presented through an extremely simple chat interface. The architecture made the product
+              possible, but product timing, deployment choices, risk tolerance, and alignment work shaped who brought that
+              experience to the public first.
+            </p>
+          </div>
+        </section>
+
+        <section id="problem" class="reading-section">
+          <h2>The bottleneck it attacked</h2>
+
+          <p>
+            The central enemy is not simply that “RNNs are old.” The real problem is
+            <strong>sequential dependence</strong>. In an RNN, information moves through a chain:
+            the representation at one position depends on the representation before it. If token 1 needs
+            to influence token 30, the signal must pass through many intermediate hidden states. This makes
+            long-distance dependencies harder to learn and prevents the model from fully parallelizing
+            computation across positions.
+          </p>
+
+          <div class="comparison-grid">
+            <div class="comparison-card">
+              <strong>RNN information path</strong>
+              <p>
+                <code>x₁ → h₁ → h₂ → h₃ → ... → hₙ</code>. The order is natural, but the path is long,
+                and training has an unavoidable left-to-right dependency.
+              </p>
+            </div>
+
+            <div class="comparison-card">
+              <strong>CNN information path</strong>
+              <p>
+                Convolutions can process positions in parallel, but each layer sees only a local window.
+                Distant tokens meet only after enough layers expand the receptive field.
+              </p>
+            </div>
+
+            <div class="comparison-card">
+              <strong>Self-attention path</strong>
+              <p>
+                Any token can attend to any other token in one layer. The path length between two positions
+                is constant, no matter how far apart they are.
+              </p>
+            </div>
+
+            <div class="comparison-card">
+              <strong>Transformer trade-off</strong>
+              <p>
+                Full self-attention costs <code>O(n²)</code> in sequence length because every token is compared
+                with every other token. For sentence-level translation, <code>n</code> is usually manageable.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section id="architecture" class="reading-section">
+          <h2>The architecture as a whole</h2>
+
+          <p>
+            The Transformer keeps the familiar encoder-decoder shape of earlier translation systems. The
+            <button class="anno" data-anno="encoder">encoder</button> reads the source sentence and builds
+            contextual representations for every source token. The
+            <button class="anno" data-anno="decoder">decoder</button> generates the target sentence one token
+            at a time. What changes is not the high-level translation workflow, but the internal mechanism
+            used inside each block.
+          </p>
+
+          <div class="architecture-flow">
+            <span>Token embedding</span>
+            <span>+</span>
+            <span>Positional encoding</span>
+            <span>→</span>
+            <span>Encoder stack × 6</span>
+            <span>→</span>
+            <span>Decoder stack × 6</span>
+            <span>→</span>
+            <span>Linear + softmax</span>
+          </div>
+
+          <p>
+            “Six layers” means six blocks with the same structure, not one block reused with shared weights.
+            Each layer has its own parameters. The encoder stack repeats one kind of block six times; the
+            decoder stack repeats a slightly larger block six times. This stacked design lets the model refine
+            token representations gradually, from surface-level word information toward more task-specific
+            contextual information.
+          </p>
+
+          <div class="comparison-grid stack-grid">
+            <div class="comparison-card">
+              <strong>One encoder layer</strong>
+              <p>
+                <code>Self-attention → Add &amp; Norm → FFN → Add &amp; Norm</code>
+              </p>
+              <p>
+                The encoder layer lets every source token gather information from the full source sentence,
+                then uses a
+                <button class="anno" data-anno="ffn">position-wise feed-forward network</button>
+                to refine each token representation independently.
+              </p>
+            </div>
+
+            <div class="comparison-card">
+              <strong>One decoder layer</strong>
+              <p>
+                <code>Masked self-attention → Add &amp; Norm → Cross-attention → Add &amp; Norm → FFN → Add &amp; Norm</code>
+              </p>
+              <p>
+                The decoder first looks only at previously generated target tokens, then uses
+                <button class="anno" data-anno="crossAttention">encoder-decoder attention</button>
+                to query the encoder output and decide which source positions matter for the next prediction.
+              </p>
+            </div>
+          </div>
+
+          <div class="comparison-grid">
+            {architectureSteps.map((step) => (
+              <div class="comparison-card">
+                <strong>{step.title}</strong>
+                <p>{step.text}</p>
+              </div>
+            ))}
+          </div>
+
+          <p>
+            Around each sublayer, the model applies a
+            <button class="anno" data-anno="residual">residual connection</button> followed by
+            <button class="anno" data-anno="layernorm">layer normalization</button>. This is written as
+            <code>LayerNorm(x + Sublayer(x))</code>. These details are not decorative: residual connections
+            preserve information and improve gradient flow, while layer normalization keeps the activations
+            stable as the model becomes deeper.
+          </p>
+
+          <div class="paper-figure attention-figure">
+            <svg viewBox="0 0 900 360" role="img" aria-label="Simplified Transformer encoder-decoder flow">
+              <defs>
+                <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+                  <polygon points="0 0, 8 3, 0 6" class="arrow-head"></polygon>
+                </marker>
+              </defs>
+
+              <text x="170" y="34" class="section-title">Encoder</text>
+              <text x="650" y="34" class="section-title">Decoder</text>
+
+              <rect x="60" y="70" width="230" height="55" rx="12"></rect>
+              <text x="175" y="98">Input embeddings + PE</text>
+
+              <rect x="60" y="155" width="230" height="55" rx="12"></rect>
+              <text x="175" y="183">Multi-head self-attention</text>
+
+              <rect x="60" y="240" width="230" height="55" rx="12"></rect>
+              <text x="175" y="268">Position-wise FFN</text>
+
+              <rect x="520" y="70" width="250" height="55" rx="12"></rect>
+              <text x="645" y="98">Output embeddings + PE</text>
+
+              <rect x="520" y="155" width="250" height="55" rx="12"></rect>
+              <text x="645" y="183">Masked self-attention</text>
+
+              <rect x="520" y="240" width="250" height="55" rx="12"></rect>
+              <text x="645" y="268">Cross-attention + FFN</text>
+
+              <g class="arrows">
+                <line x1="175" y1="125" x2="175" y2="150"></line>
+                <line x1="175" y1="210" x2="175" y2="235"></line>
+                <line x1="645" y1="125" x2="645" y2="150"></line>
+                <line x1="645" y1="210" x2="645" y2="235"></line>
+                <line x1="292" y1="267" x2="514" y2="267"></line>
+              </g>
+
+              <text x="405" y="245" class="axis-label">encoder outputs become K,V for cross-attention</text>
+            </svg>
+
+            <figcaption>
+              A simplified view: the encoder contextualizes the source sequence; the decoder generates
+              causally and queries the encoder output.
+            </figcaption>
+          </div>
+        </section>
+
+        <section id="attention" class="reading-section">
+          <h2>Attention, QKV, and square-root scaling</h2>
+
+          <p>
+            The most useful way to understand
+            <button class="anno" data-anno="attention">attention</button> is as soft retrieval. A token does not passively
+            receive a hidden state from its neighbor. It asks a question, compares that question to candidate keys,
+            and retrieves a weighted mixture of values.
+          </p>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Symbol</th>
+                  <th>Name</th>
+                  <th>Interpretation</th>
+                </tr>
+              </thead>
+              <tbody>
+                {qkvRows.map((row) => (
+                  <tr>
+                    <td><code>{row.symbol}</code></td>
+                    <td>{row.name}</td>
+                    <td>{row.meaning}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p>
+            The important point is that <button class="anno" data-anno="qkv">Q, K, and V</button> are learned projections.
+            Given token representations <code>X</code>, the model forms <code>Q = XW<sup>Q</sup></code>,
+            <code>K = XW<sup>K</sup></code>, and <code>V = XW<sup>V</sup></code>. The same token can therefore
+            play three roles: it can ask for information, advertise itself to others, and provide content when selected.
+          </p>
+
+          <div class="formula-card emphasis-formula">
+            <code>Attention(Q, K, V) = softmax(QK<sup>T</sup> / √d<sub>k</sub>)V</code>
+          </div>
+
+          <p>
+            The term <code>QK<sup>T</sup></code> creates an <code>n × n</code> matrix of compatibility scores.
+            Row <code>i</code>, column <code>j</code> means: how much should token <code>i</code> attend to token
+            <code>j</code>? <button class="anno" data-anno="softmax">Softmax</button> turns each row into attention
+            weights, and multiplying by <code>V</code> creates weighted averages of value vectors.
+          </p>
+
+          <h3>Why divide by √d<sub>k</sub>?</h3>
+
+          <p>
+            Suppose the components of <code>q</code> and <code>k</code> are independent, with mean <code>0</code>
+            and variance <code>1</code>. Their dot product is:
+          </p>
+
+          <div class="formula-card">
+            <code>q · k = Σ<sub>i=1</sub><sup>d<sub>k</sub></sup> q<sub>i</sub>k<sub>i</sub></code>
+          </div>
+
+          <p>
+            Since there are <code>d<sub>k</sub></code> terms, the variance of the sum grows roughly like
+            <code>d<sub>k</sub></code>. In other words, larger key/query dimensions tend to produce larger and more
+            extreme dot-product scores.
+          </p>
+
+          <p>
+            The problem shows up inside <button class="anno" data-anno="softmax">softmax</button>. If the scores are
+            moderately sized, softmax still leaves room for several positions to matter. For example:
+          </p>
+
+          <div class="formula-card">
+            <code>softmax([1, 2, 3]) ≈ [0.09, 0.24, 0.67]</code>
+          </div>
+
+          <p>
+            But if the same pattern is scaled up, the distribution becomes much sharper:
+          </p>
+
+          <div class="formula-card">
+            <code>softmax([10, 20, 30]) ≈ [0.00, 0.00, 1.00]</code>
+          </div>
+
+          <p>
+            Now one position receives almost all the probability, while gradients for the other positions become tiny.
+            Dividing by <code>√d<sub>k</sub></code> pulls the standard deviation of the dot products back toward a stable
+            scale, keeping softmax from becoming too saturated. This is the “scaled” part of scaled dot-product attention.
+          </p>
+
+          <h3>Dot-product attention vs. additive attention</h3>
+
+          <p>
+            Dot-product attention scores compatibility with a simple vector dot product:
+            <code>score(q, k) = q · k</code>. In matrix form, this becomes <code>QK<sup>T</sup></code>, which is why
+            it is so efficient: all query-key comparisons can be computed as one large, highly optimized matrix
+            multiplication.
+          </p>
+
+          <p>
+            <button class="anno" data-anno="additive">Additive attention</button>, associated with Bahdanau attention,
+            uses a learned scoring network instead of a direct dot product. A common way to write it is
+            <code>score(q, k) = v<sup>T</sup> tanh(W<sub>q</sub>q + W<sub>k</sub>k)</code>. In words, the query and key
+            are first transformed, combined, passed through a nonlinearity, and then scored by another learned vector.
+          </p>
+
+          <p>
+            Additive attention can be expressive, and it was very important in earlier neural machine translation.
+            The Transformer uses dot-product attention because it is much faster and more memory-efficient in practice,
+            especially when implemented with batched matrix multiplication. The scaling factor <code>√d<sub>k</sub></code>
+            helps dot-product attention avoid the large-score problem that appears when the key/query dimension grows.
+          </p>
+        </section>
+
+        <section id="multihead" class="reading-section">
+          <h2>Multi-head attention</h2>
+
+          <p>
+            A single attention distribution gives the model one way to look at the sentence. But language
+            contains many relationships at once: pronouns, modifiers, syntax, local context, long-range
+            dependencies, and translation alignment. The
+            <button class="anno" data-anno="multihead">multi-head</button> design lets the model learn several
+            views in parallel.
+          </p>
+
+          <div class="formula-card emphasis-formula">
+            <code>
+              MultiHead(Q, K, V) = Concat(head<sub>1</sub>, ..., head<sub>h</sub>)W<sup>O</sup>
+            </code>
+            <br />
+            <code>
+              head<sub>i</sub> = Attention(QW<sub>i</sub><sup>Q</sup>, KW<sub>i</sub><sup>K</sup>, VW<sub>i</sub><sup>V</sup>)
+            </code>
+          </div>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Symbol</th>
+                  <th>Meaning</th>
+                </tr>
+              </thead>
+              <tbody>
+                {multiHeadRows.map((row) => (
+                  <tr>
+                    <td><code set:html={row.symbol}></code></td>
+                    <td set:html={row.meaning}></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p>
+            In the base model, <code>d<sub>model</sub> = 512</code>, <code>h = 8</code>, and each head uses
+            <code>d<sub>k</sub> = d<sub>v</sub> = 64</code>. Eight heads of 64 dimensions concatenate back to
+            512 dimensions. This keeps the total cost similar to one full-width head while giving the model
+            multiple learned subspaces.
+          </p>
+
+          <div class="paper-passage">
+            <span class="passage-label">How to read the formula</span>
+            <p>
+              Each head receives its own projected <code>Q</code>, <code>K</code>, and <code>V</code>.
+              It performs scaled dot-product attention independently. The heads are concatenated, then
+              <code>W<sup>O</sup></code> mixes them back into the model's main representation space.
+            </p>
+          </div>
+        </section>
+
+        <section id="position" class="reading-section">
+          <h2>Positional encoding</h2>
+
+          <p>
+            Self-attention by itself is permutation-friendly: without extra information, the model can see that a set of
+            tokens exists, but not their order. That is why the model adds
+            <button class="anno" data-anno="positionalEncoding">positional encoding</button> to token embeddings.
+          </p>
+
+          <div class="formula-card emphasis-formula">
+            <code>
+              PE(pos, 2i) = sin(pos / 10000<sup>2i / d<sub>model</sub></sup>)
+            </code>
+            <br />
+            <code>
+              PE(pos, 2i + 1) = cos(pos / 10000<sup>2i / d<sub>model</sub></sup>)
+            </code>
+          </div>
+
+          <p>
+            Each position gets a <code>d<sub>model</sub></code>-dimensional vector. Even dimensions use sine;
+            odd dimensions use cosine. The frequencies differ by dimension. A single sine curve does oscillate
+            between −1 and 1, but the whole position vector is a multi-frequency fingerprint. One dimension
+            alone is not the point; the combination is.
+          </p>
+
+          <p>
+            Why not just use position numbers like 1, 2, 3? A raw number grows without bound and gives the
+            network a poor representation of local and relative distance. Sinusoidal encodings stay numerically
+            stable and create structured relationships between positions.
+          </p>
+
+          <h3>What “relative position is easier to learn” means</h3>
+
+          <p>
+            Many language patterns depend on offsets: previous word, next word, three tokens away, far away.
+            The paper's sinusoidal choice makes a fixed offset <code>k</code> mathematically regular. Through
+            trigonometric identities, <code>PE(pos + k)</code> can be represented as a linear function of
+            <code>PE(pos)</code> for a fixed <code>k</code>.
+          </p>
+
+          <div class="formula-card">
+            <code>sin(pos + k) = sin(pos)cos(k) + cos(pos)sin(k)</code>
+            <br />
+            <code>cos(pos + k) = cos(pos)cos(k) − sin(pos)sin(k)</code>
+          </div>
+
+          <p>
+            Here, <code>pos</code> plays the role of the current position, and <code>k</code> is the offset.
+            More precisely, each sinusoidal dimension uses a scaled position such as
+            <code>pos / wavelength</code>, so the actual expression is closer to
+            <code>sin((pos + k) / wavelength)</code>. But the same idea still holds: for a fixed offset
+            <code>k</code>, the representation at <code>pos + k</code> can be written as a predictable
+            combination of the sine and cosine values at <code>pos</code> under the same frequency.
+          </p>
+
+          <p>
+            This is why sinusoidal encoding is useful for relative distance. The model is not merely given
+            isolated labels like “position 7” and “position 10.” It receives position vectors whose relationships
+            contain regular patterns. That makes it easier for attention layers to learn ideas like “look one token
+            back,” “look three tokens ahead,” or “prefer nearby tokens,” even though those rules are not hard-coded.
+          </p>
+
+          <p>
+            This does not mean the model is handed an alignment table. It means the encoding gives the model
+            a convenient structure for learning “distance-like” relationships. In translation, English and French
+            words often move to different positions. Positional encoding only tells each side its own internal
+            order; the actual cross-language correspondence is learned by encoder-decoder attention.
+          </p>
+
+          <div class="comparison-grid">
+            <div class="comparison-card">
+              <strong>English source</strong>
+              <p><code>"the red car"</code>: <code>"red"</code> is before <code>"car"</code>.</p>
+            </div>
+
+            <div class="comparison-card">
+              <strong>French target</strong>
+              <p><code>"la voiture rouge"</code>: <code>"rouge"</code> is after <code>"voiture"</code>.</p>
+            </div>
+
+            <div class="comparison-card">
+              <strong>Position encoding does</strong>
+              <p>Represent order inside each sequence.</p>
+            </div>
+
+            <div class="comparison-card">
+              <strong>Cross-attention does</strong>
+              <p>Learn that <code>"rouge"</code> should retrieve information from <code>"red"</code>.</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="why" class="reading-section">
+          <h2>Why self-attention</h2>
+
+          <p>
+            The case for self-attention rests on three questions. How much computation does one layer need?
+            How many steps must be executed sequentially? And how short is the path between two distant
+            positions? A good sequence layer should be parallelizable and should let faraway tokens exchange
+            information through short paths.
+          </p>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Layer type</th>
+                  <th>Complexity</th>
+                  <th>Sequential ops</th>
+                  <th>Path length</th>
+                  <th>Why it matters</th>
+                </tr>
+              </thead>
+              <tbody>
+                {complexityRows.map((row) => (
+                  <tr>
+                    <td>{row.layer}</td>
+                    <td><code set:html={row.complexity}></code></td>
+                    <td><code set:html={row.sequential}></code></td>
+                    <td><code set:html={row.path}></code></td>
+                    <td set:html={row.reason}></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Where the complexity numbers come from</h3>
+
+          <div class="comparison-grid">
+            <div class="comparison-card">
+              <strong>Self-attention: O(n²d)</strong>
+              <p>
+                With <code>n</code> tokens, every token compares itself with every other token. That creates
+                <code>n × n</code> query-key scores. Each score is a dot product over roughly <code>d</code>
+                dimensions, so the attention score computation is <code>O(n²d)</code>.
+              </p>
+              <p>
+                The sequential depth is <code>O(1)</code> because all pairwise comparisons can be computed in
+                parallel as matrix multiplication. The maximum path length is also <code>O(1)</code>: token
+                <code>i</code> can attend directly to token <code>j</code> in one layer.
+              </p>
+            </div>
+
+            <div class="comparison-card">
+              <strong>Restricted self-attention: O(rnd)</strong>
+              <p>
+                Restricted self-attention limits each token to a local neighborhood of size <code>r</code> instead
+                of attending to all <code>n</code> positions. That means there are only <code>n × r</code>
+                query-key comparisons rather than <code>n²</code>.
+              </p>
+              <p>
+                Each comparison still costs about <code>O(d)</code>, so the total is <code>O(rnd)</code>. It remains
+                parallel across positions, but long-distance information now has to hop across neighborhoods.
+                The maximum path length becomes roughly <code>O(n / r)</code>.
+              </p>
+            </div>
+
+            <div class="comparison-card">
+              <strong>Recurrent layer: O(nd²)</strong>
+              <p>
+                A recurrent layer updates one hidden state per token. Each update usually applies a learned
+                transformation from a <code>d</code>-dimensional hidden state to another <code>d</code>-dimensional
+                hidden state, which costs about <code>O(d²)</code> per position.
+              </p>
+              <p>
+                Across <code>n</code> positions, that gives <code>O(nd²)</code>. The sequential depth is
+                <code>O(n)</code> because state <code>h<sub>t</sub></code> depends on <code>h<sub>t−1</sub></code>.
+                The path from the first token to the last token also has length <code>O(n)</code>.
+              </p>
+            </div>
+
+            <div class="comparison-card">
+              <strong>Convolutional layer: O(knd²)</strong>
+              <p>
+                A convolutional sequence layer applies a kernel of width <code>k</code> at every one of the
+                <code>n</code> positions. At each position, it combines <code>k</code> neighboring vectors and
+                maps them through learned transformations over <code>d</code>-dimensional features.
+              </p>
+              <p>
+                This gives roughly <code>O(knd²)</code>. The layer is parallel across positions, so its sequential
+                depth is <code>O(1)</code>. But a single layer only sees a local window. To connect distant tokens,
+                information must move through multiple convolutional layers. With receptive field expansion, the
+                maximum path length is written as <code>O(log<sub>k</sub> n)</code>.
+              </p>
+            </div>
+          </div>
+
+          <h3>When is self-attention cheaper than recurrence?</h3>
+
+          <p>
+            The key comparison is self-attention versus recurrence. Self-attention costs
+            <code>O(n²d)</code>; recurrence costs <code>O(nd²)</code>. Ignoring constant factors, self-attention
+            is cheaper when:
+          </p>
+
+          <div class="formula-card">
+            <code>n²d &lt; nd² &nbsp;⇒&nbsp; n &lt; d</code>
+          </div>
+
+          <p>
+            In sentence-level translation, the sequence length <code>n</code> is often much smaller than the
+            representation dimension <code>d</code>, such as <code>d<sub>model</sub> = 512</code>. This is why full
+            self-attention can be attractive despite the quadratic term in sequence length.
+          </p>
+
+          <p>
+            The deeper advantage is not just raw complexity. Self-attention gives every pair of positions a
+            direct route. That short path is especially useful for long-distance dependencies: a word near the
+            beginning of a sentence can influence a word near the end without passing through a long chain of
+            recurrent states or many layers of local convolution.
+          </p>
+        </section>
+
+        <section id="training" class="reading-section">
+          <h2>Training recipe</h2>
+
+          <p>
+            The paper's result is not architecture alone. It also depends on a careful training setup: subword tokenization,
+            large batches, Adam, learning-rate warmup, dropout, label smoothing, checkpoint averaging, and beam search.
+          </p>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Configuration</th>
+                </tr>
+              </thead>
+              <tbody>
+                {trainingConfig.map((row) => (
+                  <tr>
+                    <td>{row.item}</td>
+                    <td set:html={row.value}></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Learning rate schedule</h3>
+
+          <div class="formula-card emphasis-formula">
+            <code>
+              lrate = d<sub>model</sub><sup>−0.5</sup> · min(step_num<sup>−0.5</sup>, step_num · warmup_steps<sup>−1.5</sup>)
+            </code>
+          </div>
+
+          <p>
+            The model uses <button class="anno" data-anno="adam">Adam</button> plus
+            <button class="anno" data-anno="warmup">warmup</button>. Early learning rate increases linearly for
+            <code>4000</code> steps, then decays roughly like the inverse square root of the step number. Warmup prevents
+            unstable early jumps; later decay makes updates more precise.
+          </p>
+
+          <p>
+            <button class="anno" data-anno="dropout">Dropout</button> is applied after sublayer outputs and after the sum
+            of embeddings and positional encodings. <button class="anno" data-anno="labelSmoothing">Label smoothing</button>
+            makes targets less overconfident. The paper notes a subtle trade-off: label smoothing can hurt perplexity because
+            the model is less certain, while improving accuracy and BLEU.
+          </p>
+
+          <p>
+            For evaluation, the authors use <button class="anno" data-anno="checkpointAveraging">checkpoint averaging</button>:
+            base models average the last <code>5</code> checkpoints, and big models average the last <code>20</code>. They decode with
+            <button class="anno" data-anno="beamSearch">beam search</button> using beam size <code>4</code> and length penalty
+            <code>0.6</code>.
+          </p>
+        </section>
+
+        <section id="results" class="reading-section">
+          <h2>Results and comparisons</h2>
+
+          <p>
+            The headline result is simple: the Transformer is both strong and efficient. On WMT 2014
+            English-German, Transformer big reaches <code>28.4 BLEU</code>, more than <code>2 BLEU</code>
+            above the previous best reported systems, including ensembles. On English-French, it reaches
+            <code>41.8 BLEU</code> as a single model.
+          </p>
+
+          <p>
+            The important comparison is not only “which model has the highest BLEU?” but also “how much
+            computation did it take to get there?” Several earlier systems achieved strong translation quality
+            by using recurrent models, convolutional models, mixture-of-experts layers, reinforcement-learning
+            refinements, or ensembles. The Transformer competes with all of them while using substantially
+            less training cost than many previous high-performing systems.
+          </p>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Model</th>
+                  <th>EN-DE BLEU</th>
+                  <th>EN-FR BLEU</th>
+                  <th>Training cost</th>
+                  <th>How to read it</th>
+                </tr>
+              </thead>
+              <tbody>
+                {resultRows.map((row) => (
+                  <tr>
+                    <td>{row.model}</td>
+                    <td>{row.ende}</td>
+                    <td>{row.enfr}</td>
+                    <td>{row.cost}</td>
+                    <td>{row.note}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <h3>What the baselines are doing</h3>
+
+          <p>
+            The baselines are not random older models; they represent the strongest competing directions in
+            neural machine translation at the time. Some are recurrent encoder-decoder systems with attention,
+            some are convolutional sequence models, some use very large sparse computation, and some combine
+            multiple models into an ensemble. This matters because the Transformer is not being compared only
+            against weak RNNs. It is being compared against several serious attempts to make translation models
+            more accurate or more efficient.
+          </p>
+
+          <div class="concept-grid">
+            {modelGlossary.map((item) => (
+              <div class="concept-card">
+                <h3>{item.name}</h3>
+                <p>{item.text}</p>
+              </div>
+            ))}
+          </div>
+
+          <p>
+            Read these baselines as a map of the field before the Transformer. <strong>GNMT</strong> represents
+            the mature recurrent translation pipeline: deep LSTMs, attention, and production-oriented engineering.
+            <strong>ConvS2S</strong> and <strong>ByteNet</strong> represent the convolutional push toward better
+            parallelism. <strong>Deep-Att + PosUnk</strong> represents an attention-heavy recurrent translation
+            line with explicit handling of rare or unknown words. <strong>MoE</strong> explores scaling model
+            capacity through sparsely activated expert networks. The ensemble rows show what happens when
+            several trained models are combined at inference time, usually improving quality but increasing
+            cost and complexity.
+          </p>
+
+          <h3>What the model variation experiments teach</h3>
+
+          <p>
+            The model variation results tell the architectural story behind the headline score. A single
+            attention head is worse than multi-head attention, which supports the idea that different heads
+            learn different relational views of the sentence. But too many heads can also hurt, because if
+            the total model dimension is fixed, each head becomes too narrow to represent rich query-key
+            compatibility.
+          </p>
+
+          <p>
+            Reducing the key/query dimension hurts quality, suggesting that deciding whether a query and a
+            key match is not a trivial operation. Larger models generally perform better, dropout is important
+            for preventing overfitting, and learned positional embeddings perform almost the same as sinusoidal
+            encodings on the tested translation task. In other words, the paper’s best result is supported by
+            a set of design choices rather than by one isolated trick.
+          </p>
+
+          <div class="paper-passage">
+            <span class="passage-label">How to interpret the result</span>
+            <p>
+              The paper does not merely report “higher BLEU.” It connects the gain to the earlier architectural
+              argument: shorter paths for long-distance dependency, fewer sequential operations, and better GPU
+              parallelization. The result is persuasive because the same design that explains the speed advantage
+              also delivers state-of-the-art translation quality.
+            </p>
+          </div>
+        </section>
+
+        <section id="figures" class="reading-section">
+          <h2>Appendix visualizations</h2>
+
+          <p>
+            The appendix visualizes encoder self-attention heads. These figures are not strict proof that attention equals
+            linguistic explanation, but they show why the model felt interpretable: some heads visibly focus on meaningful
+            syntactic or semantic relationships.
+          </p>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Figure</th>
+                  <th>Pattern</th>
+                  <th>Interpretation</th>
+                </tr>
+              </thead>
+              <tbody>
+                {figureRows.map((row) => (
+                  <tr>
+                    <td>{row.fig}</td>
+                    <td>{row.topic}</td>
+                    <td>{row.text}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="impact" class="reading-section">
+          <h2>Impact and afterlife</h2>
+
+          <p>
+            The original Transformer is an encoder-decoder translation model. Modern LLMs usually use only part of that
+            template. <button class="anno" data-anno="bert">BERT</button> is encoder-only and emphasizes understanding.
+            <button class="anno" data-anno="gpt">GPT</button> is decoder-only and emphasizes next-token generation.
+            <button class="anno" data-anno="chatgpt">ChatGPT</button> is not simply “the Transformer paper turned into a product”;
+            it is a later stack of scale, pretraining, instruction tuning, feedback learning, safety work, and interface design.
+          </p>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Period</th>
+                  <th>What changed</th>
+                </tr>
+              </thead>
+              <tbody>
+                {timelineRows.map((row) => (
+                  <tr>
+                    <td>{row.year}</td>
+                    <td>{row.event}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p>
+            Why was it called “Transformer”? At the paper level, the name fits the sequence-transduction framing:
+            the model transforms one sequence into another. It also names the architectural transformation happening
+            inside the model: representations are repeatedly transformed by attention and feed-forward blocks rather than
+            updated by recurrence. The name became broader than the original machine-translation setting because the same
+            block turned out to scale across many modalities and tasks.
+          </p>
+
+          <p>
+            The Google-versus-OpenAI question is best answered carefully. Google created the architecture and later used
+            Transformer-based models in major products. OpenAI, however, pushed the decoder-only generative line into a
+            public conversational interface. Architecture was necessary, but not sufficient; product timing and alignment
+            strategy mattered too.
+          </p>
+        </section>
+
+        <section id="takeaways" class="reading-section final-takeaways">
+          <h2>Takeaways</h2>
+
+          <ol>
+            <li>The Transformer keeps encoder-decoder translation but replaces recurrence/convolution with attention-based token communication.</li>
+            <li>Attention is soft retrieval: Q asks, K matches, V supplies information.</li>
+            <li>Square-root scaling keeps dot-product scores from making softmax too sharp.</li>
+            <li>Multi-head attention gives the model multiple learned views of the same sequence.</li>
+            <li>Sinusoidal positional encoding gives order information and a convenient structure for relative offsets.</li>
+            <li>The paper's empirical claim is not only better BLEU, but better BLEU with far more parallelizable training.</li>
+            <li>The modern LLM era begins here architecturally, but ChatGPT required later choices: decoder-only pretraining, scaling, instruction tuning, feedback, and product design.</li>
+          </ol>
+        </section>
+      </article>
+
+      <aside class="annotation-rail">
+        <div class="annotation-card" id="annotation-card">
+          <p class="annotation-kicker">Annotation Panel</p>
+          <h2 id="annotation-title">Click a highlighted concept</h2>
+          <p id="annotation-type" class="annotation-type">Term · Formula · Metric · Dataset</p>
+          <p id="annotation-body">
+            Click highlighted terms, formulas, metrics, or baselines while reading. The explanation will appear here without interrupting the main text.
+          </p>
+
+          <div id="annotation-why-wrap" class="annotation-extra hidden">
+            <strong>Why it matters here</strong>
+            <p id="annotation-why"></p>
+          </div>
+
+          <div id="annotation-related-wrap" class="annotation-extra hidden">
+            <strong>Related concepts</strong>
+            <div id="annotation-related" class="annotation-tags"></div>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <script define:vars={{ annotations }}>
+      const buttons = document.querySelectorAll("[data-anno]");
+      const titleEl = document.getElementById("annotation-title");
+      const typeEl = document.getElementById("annotation-type");
+      const bodyEl = document.getElementById("annotation-body");
+      const whyWrap = document.getElementById("annotation-why-wrap");
+      const whyEl = document.getElementById("annotation-why");
+      const relatedWrap = document.getElementById("annotation-related-wrap");
+      const relatedEl = document.getElementById("annotation-related");
+
+      function setAnnotation(key) {
+        const item = annotations[key];
+        if (!item) return;
+
+        titleEl.textContent = item.title;
+        typeEl.textContent = item.type;
+        bodyEl.textContent = item.body;
+
+        if (item.why) {
+          whyWrap.classList.remove("hidden");
+          whyEl.textContent = item.why;
+        } else {
+          whyWrap.classList.add("hidden");
+          whyEl.textContent = "";
+        }
+
+        if (Array.isArray(item.related) && item.related.length > 0) {
+          relatedWrap.classList.remove("hidden");
+
+          const chips = item.related.map((tag) => {
+            const span = document.createElement("span");
+            span.className = "related-chip";
+            span.textContent = tag;
+
+            Object.assign(span.style, {
+              display: "inline-flex",
+              alignItems: "center",
+              width: "fit-content",
+              maxWidth: "100%",
+              border: "1px solid #b9c7d8",
+              borderRadius: "999px",
+              background: "#edf4fb",
+              color: "#2f5f8f",
+              padding: "7px 12px",
+              fontSize: "12px",
+              fontWeight: "800",
+              lineHeight: "1.15",
+              whiteSpace: "nowrap",
+              boxShadow: "0 1px 2px rgba(43, 50, 56, 0.06)",
+            });
+
+            return span;
+          });
+
+          relatedEl.replaceChildren(...chips);
+        } else {
+          relatedWrap.classList.add("hidden");
+          relatedEl.replaceChildren();
+        }
+
+        buttons.forEach((button) => button.classList.remove("active"));
+        document
+          .querySelectorAll(`[data-anno="${key}"]`)
+          .forEach((button) => button.classList.add("active"));
+      }
+
+      buttons.forEach((button) => {
+        button.addEventListener("click", () => {
+          setAnnotation(button.dataset.anno);
+        });
+      });
+
+      setAnnotation("attention");
+    </script>
+
+    <style>
+      .annotated-layout {
+        display: grid;
+        grid-template-columns: 160px minmax(760px, 920px) 340px;
+        gap: 22px;
+        width: fit-content;
+        max-width: calc(100vw - 48px);
+        margin: 0 auto;
+        padding: 40px 0 88px;
+      }
+
+      .heading-anno {
+        font-size: inherit;
+        line-height: inherit;
+        font-weight: inherit;
+        letter-spacing: inherit;
+        color: var(--accent);
+      }
+
+      .left-rail,
+      .annotation-rail {
+        position: sticky;
+        top: 88px;
+        align-self: start;
+      }
+
+      .rail-card,
+      .annotation-card {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+      }
+
+      .rail-card {
+        padding: 16px;
+      }
+
+      .rail-title {
+        margin: 0 0 12px;
+        color: var(--heading);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .toc {
+        display: grid;
+        gap: 8px;
+      }
+
+      .toc a {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.35;
+      }
+
+      .toc a:hover {
+        color: var(--accent);
+      }
+
+      .reading-column {
+        min-width: 0;
+        width: 100%;
+      }
+
+      .paper-hero {
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+        padding: 36px 48px;
+        margin-bottom: 18px;
+      }
+
+      .compact-title {
+        font-size: 1.85rem;
+        line-height: 1.16;
+        letter-spacing: -0.03em;
+        margin-bottom: 10px;
+        max-width: 780px;
+      }
+
+      .paper-links {
+        margin: 14px 0 18px;
+      }
+
+      .paper-link-pill {
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: #ffffff;
+        color: var(--accent);
+        padding: 8px 14px;
+        font-size: 13px;
+        font-weight: 750;
+        text-decoration: none;
+        transition:
+          transform 0.15s ease,
+          border-color 0.15s ease;
+      }
+
+      .paper-link-pill:hover {
+        border-color: var(--accent);
+        transform: translateY(-1px);
+      }
+
+      .reading-section {
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+        padding: 34px 48px;
+        margin-bottom: 18px;
+      }
+
+      .reading-section h2 {
+        margin-top: 0;
+      }
+
+      .reading-section h3 {
+        margin-top: 28px;
+        color: var(--heading);
+        font-size: 18px;
+      }
+
+      .reading-section p {
+        font-size: 16px;
+        line-height: 1.82;
+      }
+
+      .guide-box,
+      .paper-passage {
+        border-radius: 14px;
+        padding: 18px;
+        margin: 20px 0;
+      }
+
+      .guide-box {
+        border: 1px solid var(--line);
+        background: var(--panel-soft);
+      }
+
+      .paper-passage {
+        border-left: 4px solid var(--accent);
+        background: var(--accent-soft);
+      }
+
+      .paper-passage p,
+      .guide-box p {
+        margin-bottom: 0;
+      }
+
+      .passage-label {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .anno {
+        cursor: pointer;
+        border: 0;
+        border-bottom: 1px dotted var(--accent);
+        background: transparent;
+        color: var(--accent);
+        padding: 0 1px;
+        font: inherit;
+        font-weight: 700;
+      }
+
+      .anno:hover,
+      .anno.active {
+        background: var(--accent-soft);
+        border-bottom-style: solid;
+      }
+
+      .architecture-flow,
+      .formula-card {
+        margin: 20px 0;
+      }
+
+      .architecture-flow {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #ffffff;
+        padding: 16px;
+      }
+
+      .architecture-flow span {
+        border-radius: 999px;
+        background: #f0ede7;
+        color: var(--muted-strong);
+        padding: 6px 10px;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .history-flow span {
+        background: var(--accent-soft);
+      }
+
+      .concept-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        margin: 20px 0;
+      }
+
+      .concept-card {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #ffffff;
+        padding: 16px;
+      }
+
+      .concept-card p {
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.65;
+      }
+
+      .formula-card {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #f7f6f2;
+        padding: 18px;
+      }
+
+      .formula-card code {
+        background: transparent;
+        padding: 0;
+        color: var(--heading);
+        font-size: 15px;
+      }
+
+      .formula-button {
+        display: inline-flex;
+        width: 100%;
+        border: 0;
+        background: transparent;
+        color: var(--heading);
+        cursor: pointer;
+        text-align: left;
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", monospace;
+        font-size: 15px;
+      }
+
+      .math {
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", monospace;
+        color: var(--heading);
+      }
+
+      .math sub,
+      .math sup,
+      code sub,
+      code sup {
+        font-size: 0.68em;
+        line-height: 0;
+        position: relative;
+        vertical-align: baseline;
+      }
+
+      .math sub,
+      code sub {
+        bottom: -0.28em;
+      }
+
+      .math sup,
+      code sup {
+        top: -0.45em;
+      }
+
+      .comparison-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin: 20px 0;
+      }
+
+      .comparison-card {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #ffffff;
+        padding: 16px;
+      }
+
+      .comparison-card strong {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--heading);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .comparison-card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.65;
+      }
+
+      .results-table-wrap {
+        overflow-x: auto;
+        margin: 20px 0;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+      }
+
+      .results-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: #ffffff;
+        font-size: 14px;
+      }
+
+      .results-table th,
+      .results-table td {
+        border-bottom: 1px solid var(--line);
+        padding: 12px 14px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      .results-table th {
+        background: var(--panel-soft);
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .results-table tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .algorithm-table code {
+        white-space: nowrap;
+      }
+
+      .formula-table td {
+        vertical-align: top;
+      }
+
+      .mini-formula {
+        margin: 0;
+        padding: 0.65rem 0.75rem;
+        font-size: 0.9rem;
+        white-space: nowrap;
+      }
+
+      .mini-formula code {
+        font-size: 13px;
+      }
+
+      .emphasis-formula {
+        border-width: 2px;
+        border-color: rgba(47, 95, 143, 0.45);
+        background: rgba(47, 95, 143, 0.06);
+      }
+
+      .annotation-card {
+        padding: 22px;
+      }
+
+      .annotation-kicker {
+        margin: 0 0 8px;
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .annotation-card h2 {
+        margin: 0;
+        color: var(--heading);
+        font-size: 20px;
+        line-height: 1.25;
+        letter-spacing: -0.03em;
+      }
+
+      .annotation-type {
+        display: inline-flex;
+        margin: 12px 0 14px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        padding: 6px 11px;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .annotation-card p {
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.68;
+      }
+
+      .annotation-extra {
+        margin-top: 18px;
+        border-top: 1px solid var(--line);
+        padding-top: 14px;
+      }
+
+      .annotation-extra strong {
+        color: var(--heading);
+        font-size: 13px;
+      }
+
+      :global(#annotation-related.annotation-tags) {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+        margin-top: 12px;
+      }
+
+      :global(#annotation-related .related-chip) {
+        display: inline-flex !important;
+        align-items: center;
+        width: fit-content;
+        max-width: 100%;
+        border: 1px solid #b9c7d8;
+        border-radius: 999px;
+        background: #edf4fb;
+        color: #2f5f8f;
+        padding: 7px 12px;
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1.15;
+        white-space: nowrap;
+        box-shadow: 0 1px 2px rgba(43, 50, 56, 0.06);
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      .final-takeaways {
+        background: var(--heading);
+        color: #ffffff;
+      }
+
+      .final-takeaways h2,
+      .final-takeaways li {
+        color: #ffffff;
+      }
+
+      .final-takeaways code {
+        color: #ffffff;
+      }
+
+      .paper-figure {
+        margin: 24px 0;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: #ffffff;
+        padding: 18px 18px 14px;
+        box-shadow: 0 8px 20px rgba(43, 50, 56, 0.035);
+      }
+
+      .paper-figure svg {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      .paper-figure figcaption {
+        margin-top: 12px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .attention-figure svg {
+        width: 100%;
+        height: auto;
+      }
+
+      .attention-figure rect {
+        fill: #ffffff;
+        stroke: #2f3437;
+        stroke-width: 1.4;
+      }
+
+      .attention-figure text {
+        fill: #2f3437;
+        font-size: 14px;
+        text-anchor: middle;
+        dominant-baseline: middle;
+      }
+
+      .attention-figure .source-tokens rect {
+        fill: #f7f6f2;
+      }
+
+      .attention-figure .encoder-boxes rect,
+      .attention-figure .context rect,
+      .attention-figure .decoder rect {
+        fill: #ffffff;
+      }
+
+      .attention-figure .formula-card {
+        fill: rgba(47, 95, 143, 0.06);
+        stroke: rgba(47, 52, 55, 0.35);
+        stroke-width: 1.2;
+      }
+
+      .attention-figure .arrows line {
+        stroke: #2f3437;
+        stroke-width: 1.5;
+        marker-end: url(#arrowhead);
+      }
+
+      .attention-figure .attention-lines line {
+        stroke: #2f5f8f;
+        stroke-width: 1.45;
+        opacity: 0.58;
+        marker-end: url(#arrowhead);
+      }
+
+      .attention-figure .arrow-head {
+        fill: #2f3437;
+      }
+
+      .attention-figure .section-title {
+        fill: var(--muted);
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .attention-figure .formula-label {
+        fill: #2f3437;
+        font-size: 13px;
+        font-weight: 500;
+        opacity: 0.88;
+      }
+
+      .attention-figure .mini-label {
+        font-size: 10px;
+        opacity: 0.7;
+      }
+
+      .attention-figure .axis-label {
+        fill: var(--muted);
+        font-size: 13px;
+        font-weight: 600;
+        opacity: 0.85;
+      }
+
+      @media (max-width: 1180px) {
+        .annotated-layout {
+          grid-template-columns: minmax(0, 1fr);
+          width: auto;
+          max-width: 920px;
+          padding: 24px 18px 72px;
+        }
+
+        .left-rail,
+        .annotation-rail {
+          position: static;
+        }
+
+        .left-rail {
+          order: -1;
+        }
+
+        .annotation-rail {
+          order: 2;
+        }
+
+        .concept-grid,
+        .comparison-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .paper-hero,
+        .reading-section {
+          padding: 26px 22px;
+        }
+
+        .compact-title {
+          font-size: 1.55rem;
+        }
+
+        .reading-section p {
+          font-size: 15px;
+          line-height: 1.75;
+        }
+
+        .mini-formula {
+          white-space: normal;
+        }
+
+        .algorithm-table code {
+          white-space: normal;
+        }
+      }
+    </style>
+  </body>
+</html>
