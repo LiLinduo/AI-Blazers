@@ -1,0 +1,33 @@
+---
+type NavItem = [href: string, label: string];
+
+const {
+  nav = [],
+  brandHref,
+  brandLabel = "AI Blazers",
+  brandMark = "AI",
+} = Astro.props as {
+  nav?: NavItem[];
+  brandHref?: string;
+  brandLabel?: string;
+  brandMark?: string;
+};
+
+const base = import.meta.env.BASE_URL;
+const homeHref = brandHref ?? base;
+---
+
+<header class="site-header">
+  <a class="brand" href={homeHref}>
+    <span class="brand-mark">{brandMark}</span>
+    <span>{brandLabel}</span>
+  </a>
+
+  {nav.length > 0 && (
+    <nav class="nav">
+      {nav.map(([href, label]) => (
+        <a href={href}>{label}</a>
+      ))}
+    </nav>
+  )}
+</header>

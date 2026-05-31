@@ -1,0 +1,39 @@
+---
+const {
+  eyebrow,
+  title,
+  authors,
+  subtitle,
+  arxivUrl,
+  arxivLabel = "View original paper on arXiv ↗",
+  compactTitle = false,
+} = Astro.props as {
+  eyebrow?: string;
+  title: string;
+  authors?: string;
+  subtitle?: string;
+  arxivUrl?: string;
+  arxivLabel?: string;
+  compactTitle?: boolean;
+};
+---
+
+<header class="paper-hero">
+  {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+
+  <h1 class={`paper-title${compactTitle ? " compact-title" : ""}`}>
+    {title}
+  </h1>
+
+  {authors && <p class="paper-authors">{authors}</p>}
+
+  {arxivUrl && (
+    <div class="paper-links">
+      <a class="paper-link-pill" href={arxivUrl} target="_blank" rel="noreferrer">
+        {arxivLabel}
+      </a>
+    </div>
+  )}
+
+  {subtitle && <p class="paper-subtitle">{subtitle}</p>}
+</header>

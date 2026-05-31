@@ -1,0 +1,10 @@
+---
+const { id, class: className = "" } = Astro.props as {
+  id: string;
+  class?: string;
+};
+---
+
+<button class={`anno ${className}`.trim()} data-anno={id}>
+  <slot />
+</button>

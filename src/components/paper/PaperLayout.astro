@@ -1,0 +1,135 @@
+---
+import "../../styles/global.css";
+import "../../styles/paper.css";
+
+import SiteHeader from "../site/SiteHeader.astro";
+import PaperToc from "./PaperToc.astro";
+import PaperHero from "./PaperHero.astro";
+import AnnotationRail from "./AnnotationRail.astro";
+
+type SectionItem = [id: string, label: string];
+type AnnotationItem = {
+  type: string;
+  title: string;
+  body: string;
+  why?: string;
+  related?: string[];
+};
+
+const {
+  title,
+  eyebrow,
+  authors,
+  subtitle,
+  arxivUrl,
+  sections = [],
+  annotations = {},
+  initialAnnotation,
+  compactTitle = false,
+} = Astro.props as {
+  title: string;
+  eyebrow?: string;
+  authors?: string;
+  subtitle?: string;
+  arxivUrl?: string;
+  sections?: SectionItem[];
+  annotations?: Record<string, AnnotationItem>;
+  initialAnnotation?: string;
+  compactTitle?: boolean;
+};
+
+const base = import.meta.env.BASE_URL;
+const faviconPath = `${base.replace(/\/$/, "")}/favicon.ico`;
+const defaultAnnotation = initialAnnotation ?? Object.keys(annotations)[0] ?? "";
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} · AI Blazers</title>
+    <link rel="icon" href={faviconPath} />
+  </head>
+
+  <body>
+    <SiteHeader nav={[[base, "Home"]]} />
+
+    <main class="annotated-layout">
+      <PaperToc sections={sections} />
+
+      <article class="reading-column">
+        <PaperHero
+          eyebrow={eyebrow}
+          title={title}
+          authors={authors}
+          subtitle={subtitle}
+          arxivUrl={arxivUrl}
+          compactTitle={compactTitle}
+        />
+
+        <slot />
+      </article>
+
+      <AnnotationRail />
+    </main>
+
+    <script define:vars={{ annotations, defaultAnnotation }}>
+      const buttons = document.querySelectorAll("[data-anno]");
+      const titleEl = document.getElementById("annotation-title");
+      const typeEl = document.getElementById("annotation-type");
+      const bodyEl = document.getElementById("annotation-body");
+      const whyWrap = document.getElementById("annotation-why-wrap");
+      const whyEl = document.getElementById("annotation-why");
+      const relatedWrap = document.getElementById("annotation-related-wrap");
+      const relatedEl = document.getElementById("annotation-related");
+
+      function setAnnotation(key) {
+        const item = annotations[key];
+        if (!item || !titleEl || !typeEl || !bodyEl || !whyWrap || !whyEl || !relatedWrap || !relatedEl) return;
+
+        titleEl.textContent = item.title;
+        typeEl.textContent = item.type;
+        bodyEl.textContent = item.body;
+
+        if (item.why) {
+          whyWrap.classList.remove("hidden");
+          whyEl.textContent = item.why;
+        } else {
+          whyWrap.classList.add("hidden");
+          whyEl.textContent = "";
+        }
+
+        if (Array.isArray(item.related) && item.related.length > 0) {
+          relatedWrap.classList.remove("hidden");
+
+          const chips = item.related.map((tag) => {
+            const span = document.createElement("span");
+            span.className = "related-chip";
+            span.textContent = tag;
+            return span;
+          });
+
+          relatedEl.replaceChildren(...chips);
+        } else {
+          relatedWrap.classList.add("hidden");
+          relatedEl.replaceChildren();
+        }
+
+        buttons.forEach((button) => button.classList.remove("active"));
+        document
+          .querySelectorAll(`[data-anno="${key}"]`)
+          .forEach((button) => button.classList.add("active"));
+      }
+
+      buttons.forEach((button) => {
+        button.addEventListener("click", () => {
+          setAnnotation(button.dataset.anno);
+        });
+      });
+
+      if (defaultAnnotation) {
+        setAnnotation(defaultAnnotation);
+      }
+    </script>
+  </body>
+</html>

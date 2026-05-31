@@ -1,0 +1,14 @@
+---
+const { id, title, eyebrow, class: className = "" } = Astro.props as {
+  id: string;
+  title?: string;
+  eyebrow?: string;
+  class?: string;
+};
+---
+
+<section id={id} class={`reading-section ${className}`.trim()}>
+  {eyebrow && <p class="section-eyebrow">{eyebrow}</p>}
+  {title && <h2>{title}</h2>}
+  <slot />
+</section>

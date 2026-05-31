@@ -1,0 +1,30 @@
+---
+const {
+  title = "Click a highlighted concept",
+  typeLabel = "Term · Formula · Metric · Dataset",
+  body = "As you read the paper text, click highlighted terms, formulas, metrics, datasets, or baselines. The explanation will appear here without interrupting the main reading flow.",
+} = Astro.props as {
+  title?: string;
+  typeLabel?: string;
+  body?: string;
+};
+---
+
+<aside class="annotation-rail">
+  <div class="annotation-card" id="annotation-card">
+    <p class="annotation-kicker">Annotation Panel</p>
+    <h2 id="annotation-title">{title}</h2>
+    <p id="annotation-type" class="annotation-type">{typeLabel}</p>
+    <p id="annotation-body">{body}</p>
+
+    <div id="annotation-why-wrap" class="annotation-extra hidden">
+      <strong>Why it matters here</strong>
+      <p id="annotation-why"></p>
+    </div>
+
+    <div id="annotation-related-wrap" class="annotation-extra hidden">
+      <strong>Related concepts</strong>
+      <div id="annotation-related" class="annotation-tags"></div>
+    </div>
+  </div>
+</aside>
