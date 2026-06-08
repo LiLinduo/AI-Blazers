@@ -875,6 +875,243 @@ const timelineRows = [
             </table>
           </div>
 
+          <div class="formula-card emphasis-formula">
+            <svg
+              viewBox="0 0 900 460"
+              role="img"
+              aria-label="Simplified BERT encoder architecture"
+              style="width: 100%; height: auto;"
+            >
+              <defs>
+                <marker id="arrow-bert-arch" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                  <path d="M0,0 L0,6 L9,3 z" fill="#334155"></path>
+                </marker>
+              </defs>
+
+              <text x="450" y="38" text-anchor="middle" font-size="22" font-weight="700" fill="#0f172a">
+                BERT as an encoder stack
+              </text>
+
+              <text x="60" y="96" font-size="14" font-weight="700" fill="#334155">Contextual outputs</text>
+              <rect x="250" y="74" width="54" height="34" rx="6" fill="#d9f99d" stroke="#365314"></rect>
+              <text x="277" y="96" text-anchor="middle" font-size="14" fill="#1a2e05">C</text>
+              <rect x="330" y="74" width="54" height="34" rx="6" fill="#d9f99d" stroke="#365314"></rect>
+              <text x="357" y="96" text-anchor="middle" font-size="14" fill="#1a2e05">T₁</text>
+              <rect x="410" y="74" width="54" height="34" rx="6" fill="#d9f99d" stroke="#365314"></rect>
+              <text x="437" y="96" text-anchor="middle" font-size="14" fill="#1a2e05">T₂</text>
+              <text x="495" y="96" text-anchor="middle" font-size="18" fill="#475569">...</text>
+              <rect x="540" y="74" width="54" height="34" rx="6" fill="#d9f99d" stroke="#365314"></rect>
+              <text x="567" y="96" text-anchor="middle" font-size="14" fill="#1a2e05">Tₙ</text>
+
+              <rect x="170" y="145" width="560" height="170" rx="16" fill="#dbeafe" stroke="#1e3a8a" stroke-width="2"></rect>
+              <text x="450" y="176" text-anchor="middle" font-size="28" font-weight="700" fill="#1e3a8a">BERT</text>
+              <text x="450" y="202" text-anchor="middle" font-size="14" fill="#334155">
+                L bidirectional Transformer encoder layers
+              </text>
+
+              <circle cx="285" cy="246" r="18" fill="#eff6ff" stroke="#60a5fa"></circle>
+              <circle cx="365" cy="246" r="18" fill="#eff6ff" stroke="#60a5fa"></circle>
+              <circle cx="445" cy="246" r="18" fill="#eff6ff" stroke="#60a5fa"></circle>
+              <circle cx="525" cy="246" r="18" fill="#eff6ff" stroke="#60a5fa"></circle>
+              <circle cx="605" cy="246" r="18" fill="#eff6ff" stroke="#60a5fa"></circle>
+
+              <path d="M303 246 C325 218, 343 218, 365 246" fill="none" stroke="#64748b" stroke-width="2"></path>
+              <path d="M383 246 C405 218, 423 218, 445 246" fill="none" stroke="#64748b" stroke-width="2"></path>
+              <path d="M463 246 C485 218, 503 218, 525 246" fill="none" stroke="#64748b" stroke-width="2"></path>
+              <path d="M543 246 C565 218, 583 218, 605 246" fill="none" stroke="#64748b" stroke-width="2"></path>
+              <path d="M285 268 C365 300, 525 300, 605 268" fill="none" stroke="#64748b" stroke-width="2" stroke-dasharray="5 5"></path>
+
+              <text x="450" y="295" text-anchor="middle" font-size="13" fill="#334155">
+                every token can attend to every visible token
+              </text>
+
+              <text x="60" y="360" font-size="14" font-weight="700" fill="#334155">Input embeddings</text>
+              <rect x="250" y="338" width="54" height="34" rx="6" fill="#fde68a" stroke="#92400e"></rect>
+              <text x="277" y="360" text-anchor="middle" font-size="13" fill="#78350f">E[CLS]</text>
+              <rect x="330" y="338" width="54" height="34" rx="6" fill="#fde68a" stroke="#92400e"></rect>
+              <text x="357" y="360" text-anchor="middle" font-size="13" fill="#78350f">E₁</text>
+              <rect x="410" y="338" width="54" height="34" rx="6" fill="#fde68a" stroke="#92400e"></rect>
+              <text x="437" y="360" text-anchor="middle" font-size="13" fill="#78350f">E₂</text>
+              <text x="495" y="360" text-anchor="middle" font-size="18" fill="#475569">...</text>
+              <rect x="540" y="338" width="54" height="34" rx="6" fill="#fde68a" stroke="#92400e"></rect>
+              <text x="567" y="360" text-anchor="middle" font-size="13" fill="#78350f">Eₙ</text>
+
+              <text x="60" y="424" font-size="14" font-weight="700" fill="#334155">Input tokens</text>
+              <rect x="250" y="402" width="54" height="30" rx="6" fill="#fee2e2" stroke="#991b1b"></rect>
+              <text x="277" y="422" text-anchor="middle" font-size="12" fill="#7f1d1d">[CLS]</text>
+              <rect x="330" y="402" width="54" height="30" rx="6" fill="#fee2e2" stroke="#991b1b"></rect>
+              <text x="357" y="422" text-anchor="middle" font-size="12" fill="#7f1d1d">Tok 1</text>
+              <rect x="410" y="402" width="54" height="30" rx="6" fill="#fee2e2" stroke="#991b1b"></rect>
+              <text x="437" y="422" text-anchor="middle" font-size="12" fill="#7f1d1d">Tok 2</text>
+              <text x="495" y="422" text-anchor="middle" font-size="18" fill="#475569">...</text>
+              <rect x="540" y="402" width="54" height="30" rx="6" fill="#fee2e2" stroke="#991b1b"></rect>
+              <text x="567" y="422" text-anchor="middle" font-size="12" fill="#7f1d1d">Tok N</text>
+
+              <line x1="277" y1="402" x2="277" y2="376" stroke="#334155" stroke-width="2" marker-end="url(#arrow-bert-arch)"></line>
+              <line x1="357" y1="402" x2="357" y2="376" stroke="#334155" stroke-width="2" marker-end="url(#arrow-bert-arch)"></line>
+              <line x1="437" y1="402" x2="437" y2="376" stroke="#334155" stroke-width="2" marker-end="url(#arrow-bert-arch)"></line>
+              <line x1="567" y1="402" x2="567" y2="376" stroke="#334155" stroke-width="2" marker-end="url(#arrow-bert-arch)"></line>
+
+              <line x1="277" y1="338" x2="277" y2="320" stroke="#334155" stroke-width="2" marker-end="url(#arrow-bert-arch)"></line>
+              <line x1="357" y1="338" x2="357" y2="320" stroke="#334155" stroke-width="2" marker-end="url(#arrow-bert-arch)"></line>
+              <line x1="437" y1="338" x2="437" y2="320" stroke="#334155" stroke-width="2" marker-end="url(#arrow-bert-arch)"></line>
+              <line x1="567" y1="338" x2="567" y2="320" stroke="#334155" stroke-width="2" marker-end="url(#arrow-bert-arch)"></line>
+
+              <line x1="277" y1="145" x2="277" y2="114" stroke="#334155" stroke-width="2" marker-end="url(#arrow-bert-arch)"></line>
+              <line x1="357" y1="145" x2="357" y2="114" stroke="#334155" stroke-width="2" marker-end="url(#arrow-bert-arch)"></line>
+              <line x1="437" y1="145" x2="437" y2="114" stroke="#334155" stroke-width="2" marker-end="url(#arrow-bert-arch)"></line>
+              <line x1="567" y1="145" x2="567" y2="114" stroke="#334155" stroke-width="2" marker-end="url(#arrow-bert-arch)"></line>
+            </svg>
+          </div>
+
+          <div class="formula-card emphasis-formula">
+            <svg
+              viewBox="0 0 900 410"
+              role="img"
+              aria-label="Simplified GPT architecture"
+              style="width: 100%; height: auto;"
+            >
+              <defs>
+                <marker id="arrow-gpt-arch" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                  <path d="M0,0 L0,6 L9,3 z" fill="#334155"></path>
+                </marker>
+              </defs>
+
+              <text x="450" y="36" text-anchor="middle" font-size="22" font-weight="700" fill="#0f172a">
+                GPT as a causal decoder
+              </text>
+
+              <text x="60" y="98" font-size="14" font-weight="700" fill="#334155">Contextual outputs</text>
+              <rect x="250" y="76" width="54" height="34" rx="6" fill="#d9f99d" stroke="#365314"></rect>
+              <text x="277" y="98" text-anchor="middle" font-size="14" fill="#1a2e05">T₁</text>
+              <rect x="330" y="76" width="54" height="34" rx="6" fill="#d9f99d" stroke="#365314"></rect>
+              <text x="357" y="98" text-anchor="middle" font-size="14" fill="#1a2e05">T₂</text>
+              <rect x="410" y="76" width="54" height="34" rx="6" fill="#d9f99d" stroke="#365314"></rect>
+              <text x="437" y="98" text-anchor="middle" font-size="14" fill="#1a2e05">T₃</text>
+              <text x="495" y="98" text-anchor="middle" font-size="18" fill="#475569">...</text>
+              <rect x="540" y="76" width="54" height="34" rx="6" fill="#d9f99d" stroke="#365314"></rect>
+              <text x="567" y="98" text-anchor="middle" font-size="14" fill="#1a2e05">Tₙ</text>
+
+              <rect x="170" y="145" width="560" height="165" rx="16" fill="#dbeafe" stroke="#1e3a8a" stroke-width="2"></rect>
+              <text x="450" y="176" text-anchor="middle" font-size="28" font-weight="700" fill="#1e3a8a">GPT</text>
+              <text x="450" y="202" text-anchor="middle" font-size="14" fill="#334155">
+                Transformer decoder with causal masking
+              </text>
+
+              <circle cx="285" cy="245" r="17" fill="#eff6ff" stroke="#60a5fa"></circle>
+              <circle cx="365" cy="245" r="17" fill="#eff6ff" stroke="#60a5fa"></circle>
+              <circle cx="445" cy="245" r="17" fill="#eff6ff" stroke="#60a5fa"></circle>
+              <circle cx="525" cy="245" r="17" fill="#eff6ff" stroke="#60a5fa"></circle>
+              <circle cx="605" cy="245" r="17" fill="#eff6ff" stroke="#60a5fa"></circle>
+
+              <line x1="302" y1="245" x2="348" y2="245" stroke="#64748b" stroke-width="2" marker-end="url(#arrow-gpt-arch)"></line>
+              <line x1="382" y1="245" x2="428" y2="245" stroke="#64748b" stroke-width="2" marker-end="url(#arrow-gpt-arch)"></line>
+              <line x1="462" y1="245" x2="508" y2="245" stroke="#64748b" stroke-width="2" marker-end="url(#arrow-gpt-arch)"></line>
+              <line x1="542" y1="245" x2="588" y2="245" stroke="#64748b" stroke-width="2" marker-end="url(#arrow-gpt-arch)"></line>
+
+              <text x="450" y="284" text-anchor="middle" font-size="13" fill="#334155">
+                each token can attend only to earlier positions
+              </text>
+
+              <text x="60" y="374" font-size="14" font-weight="700" fill="#334155">Input tokens</text>
+              <rect x="250" y="352" width="54" height="30" rx="6" fill="#fee2e2" stroke="#991b1b"></rect>
+              <text x="277" y="372" text-anchor="middle" font-size="12" fill="#7f1d1d">Tok 1</text>
+              <rect x="330" y="352" width="54" height="30" rx="6" fill="#fee2e2" stroke="#991b1b"></rect>
+              <text x="357" y="372" text-anchor="middle" font-size="12" fill="#7f1d1d">Tok 2</text>
+              <rect x="410" y="352" width="54" height="30" rx="6" fill="#fee2e2" stroke="#991b1b"></rect>
+              <text x="437" y="372" text-anchor="middle" font-size="12" fill="#7f1d1d">Tok 3</text>
+              <text x="495" y="372" text-anchor="middle" font-size="18" fill="#475569">...</text>
+              <rect x="540" y="352" width="54" height="30" rx="6" fill="#fee2e2" stroke="#991b1b"></rect>
+              <text x="567" y="372" text-anchor="middle" font-size="12" fill="#7f1d1d">Tok N</text>
+
+              <line x1="277" y1="352" x2="277" y2="316" stroke="#334155" stroke-width="2" marker-end="url(#arrow-gpt-arch)"></line>
+              <line x1="357" y1="352" x2="357" y2="316" stroke="#334155" stroke-width="2" marker-end="url(#arrow-gpt-arch)"></line>
+              <line x1="437" y1="352" x2="437" y2="316" stroke="#334155" stroke-width="2" marker-end="url(#arrow-gpt-arch)"></line>
+              <line x1="567" y1="352" x2="567" y2="316" stroke="#334155" stroke-width="2" marker-end="url(#arrow-gpt-arch)"></line>
+            </svg>
+          </div>
+
+          <div class="formula-card emphasis-formula">
+            <svg
+              viewBox="0 0 900 430"
+              role="img"
+              aria-label="Simplified ELMo architecture"
+              style="width: 100%; height: auto;"
+            >
+              <defs>
+                <marker id="arrow-elmo-arch" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                  <path d="M0,0 L0,6 L9,3 z" fill="#334155"></path>
+                </marker>
+              </defs>
+
+              <text x="450" y="36" text-anchor="middle" font-size="22" font-weight="700" fill="#0f172a">
+                ELMo as two directional LSTMs
+              </text>
+
+              <text x="60" y="98" font-size="14" font-weight="700" fill="#334155">Contextual outputs</text>
+              <rect x="250" y="76" width="54" height="34" rx="6" fill="#d9f99d" stroke="#365314"></rect>
+              <text x="277" y="98" text-anchor="middle" font-size="14" fill="#1a2e05">T₁</text>
+              <rect x="330" y="76" width="54" height="34" rx="6" fill="#d9f99d" stroke="#365314"></rect>
+              <text x="357" y="98" text-anchor="middle" font-size="14" fill="#1a2e05">T₂</text>
+              <rect x="410" y="76" width="54" height="34" rx="6" fill="#d9f99d" stroke="#365314"></rect>
+              <text x="437" y="98" text-anchor="middle" font-size="14" fill="#1a2e05">T₃</text>
+              <text x="495" y="98" text-anchor="middle" font-size="18" fill="#475569">...</text>
+              <rect x="540" y="76" width="54" height="34" rx="6" fill="#d9f99d" stroke="#365314"></rect>
+              <text x="567" y="98" text-anchor="middle" font-size="14" fill="#1a2e05">Tₙ</text>
+
+              <rect x="170" y="145" width="560" height="185" rx="16" fill="#dbeafe" stroke="#1e3a8a" stroke-width="2"></rect>
+              <text x="450" y="176" text-anchor="middle" font-size="28" font-weight="700" fill="#1e3a8a">ELMo</text>
+              <text x="450" y="202" text-anchor="middle" font-size="14" fill="#334155">
+                forward LSTM + backward LSTM, combined at the end
+              </text>
+
+              <rect x="250" y="232" width="64" height="28" rx="14" fill="#eff6ff" stroke="#60a5fa"></rect>
+              <text x="282" y="250" text-anchor="middle" font-size="12" fill="#1e3a8a">LSTM→</text>
+              <rect x="340" y="232" width="64" height="28" rx="14" fill="#eff6ff" stroke="#60a5fa"></rect>
+              <text x="372" y="250" text-anchor="middle" font-size="12" fill="#1e3a8a">LSTM→</text>
+              <rect x="430" y="232" width="64" height="28" rx="14" fill="#eff6ff" stroke="#60a5fa"></rect>
+              <text x="462" y="250" text-anchor="middle" font-size="12" fill="#1e3a8a">LSTM→</text>
+              <rect x="520" y="232" width="64" height="28" rx="14" fill="#eff6ff" stroke="#60a5fa"></rect>
+              <text x="552" y="250" text-anchor="middle" font-size="12" fill="#1e3a8a">LSTM→</text>
+
+              <line x1="314" y1="246" x2="340" y2="246" stroke="#64748b" stroke-width="2" marker-end="url(#arrow-elmo-arch)"></line>
+              <line x1="404" y1="246" x2="430" y2="246" stroke="#64748b" stroke-width="2" marker-end="url(#arrow-elmo-arch)"></line>
+              <line x1="494" y1="246" x2="520" y2="246" stroke="#64748b" stroke-width="2" marker-end="url(#arrow-elmo-arch)"></line>
+
+              <rect x="250" y="280" width="64" height="28" rx="14" fill="#eff6ff" stroke="#60a5fa"></rect>
+              <text x="282" y="298" text-anchor="middle" font-size="12" fill="#1e3a8a">←LSTM</text>
+              <rect x="340" y="280" width="64" height="28" rx="14" fill="#eff6ff" stroke="#60a5fa"></rect>
+              <text x="372" y="298" text-anchor="middle" font-size="12" fill="#1e3a8a">←LSTM</text>
+              <rect x="430" y="280" width="64" height="28" rx="14" fill="#eff6ff" stroke="#60a5fa"></rect>
+              <text x="462" y="298" text-anchor="middle" font-size="12" fill="#1e3a8a">←LSTM</text>
+              <rect x="520" y="280" width="64" height="28" rx="14" fill="#eff6ff" stroke="#60a5fa"></rect>
+              <text x="552" y="298" text-anchor="middle" font-size="12" fill="#1e3a8a">←LSTM</text>
+
+              <line x1="340" y1="294" x2="314" y2="294" stroke="#64748b" stroke-width="2" marker-end="url(#arrow-elmo-arch)"></line>
+              <line x1="430" y1="294" x2="404" y2="294" stroke="#64748b" stroke-width="2" marker-end="url(#arrow-elmo-arch)"></line>
+              <line x1="520" y1="294" x2="494" y2="294" stroke="#64748b" stroke-width="2" marker-end="url(#arrow-elmo-arch)"></line>
+
+              <text x="615" y="250" font-size="13" fill="#334155">forward LM</text>
+              <text x="615" y="298" font-size="13" fill="#334155">backward LM</text>
+
+              <text x="60" y="386" font-size="14" font-weight="700" fill="#334155">Input tokens</text>
+              <rect x="250" y="364" width="54" height="30" rx="6" fill="#fee2e2" stroke="#991b1b"></rect>
+              <text x="277" y="384" text-anchor="middle" font-size="12" fill="#7f1d1d">Tok 1</text>
+              <rect x="330" y="364" width="54" height="30" rx="6" fill="#fee2e2" stroke="#991b1b"></rect>
+              <text x="357" y="384" text-anchor="middle" font-size="12" fill="#7f1d1d">Tok 2</text>
+              <rect x="410" y="364" width="54" height="30" rx="6" fill="#fee2e2" stroke="#991b1b"></rect>
+              <text x="437" y="384" text-anchor="middle" font-size="12" fill="#7f1d1d">Tok 3</text>
+              <text x="495" y="384" text-anchor="middle" font-size="18" fill="#475569">...</text>
+              <rect x="540" y="364" width="54" height="30" rx="6" fill="#fee2e2" stroke="#991b1b"></rect>
+              <text x="567" y="384" text-anchor="middle" font-size="12" fill="#7f1d1d">Tok N</text>
+
+              <line x1="277" y1="364" x2="277" y2="336" stroke="#334155" stroke-width="2" marker-end="url(#arrow-elmo-arch)"></line>
+              <line x1="357" y1="364" x2="357" y2="336" stroke="#334155" stroke-width="2" marker-end="url(#arrow-elmo-arch)"></line>
+              <line x1="437" y1="364" x2="437" y2="336" stroke="#334155" stroke-width="2" marker-end="url(#arrow-elmo-arch)"></line>
+              <line x1="567" y1="364" x2="567" y2="336" stroke="#334155" stroke-width="2" marker-end="url(#arrow-elmo-arch)"></line>
+            </svg>
+          </div>
+
           <div class="guide-box">
             <strong>Why BERT can be bidirectional</strong>
             <p>
