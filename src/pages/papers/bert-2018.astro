@@ -1,0 +1,1558 @@
+---
+import PaperLayout from "../../components/paper/PaperLayout.astro";
+
+const annotations = {
+  bert: {
+    type: "Architecture",
+    title: "BERT",
+    body:
+      "BERT stands for Bidirectional Encoder Representations from Transformers. It is an encoder-only Transformer pretrained on unlabeled text, then adapted to downstream NLP tasks by fine-tuning.",
+    why:
+      "BERT matters because it made one pretrained language-understanding model work across many tasks with only small task-specific output layers.",
+    related: ["Transformer Encoder", "Masked Language Model"],
+  },
+  pretraining: {
+    type: "Training Stage",
+    title: "Pre-training",
+    body:
+      "Pre-training means training a general model before the final supervised task. In BERT, the data is ordinary text, and the training targets are created automatically from that text.",
+    why:
+      "The model can learn broad language patterns from BooksCorpus and Wikipedia before seeing small task-specific datasets.",
+    related: ["Self-supervision", "MLM", "NSP"],
+  },
+  selfSupervision: {
+    type: "Learning Setup",
+    title: "Self-supervision",
+    body:
+      "Self-supervision creates labels from the input itself. For BERT, the original word is the answer for masked-word prediction, and document order supplies next-sentence labels.",
+    why:
+      "This is why BERT can use large unlabeled corpora without people manually annotating every example.",
+    related: ["Masked Language Model", "Next Sentence Prediction"],
+  },
+  downstream: {
+    type: "Task Stage",
+    title: "Downstream task",
+    body:
+      "A downstream task is the task you ultimately care about after pre-training, such as natural language inference, question answering, sentiment classification, or named entity recognition.",
+    why:
+      "BERT's claim is that the same pretrained model can be adapted to many downstream tasks.",
+    related: ["Fine-tuning"],
+  },
+  featureBased: {
+    type: "Transfer Method",
+    title: "Feature-based approach",
+    body:
+      "A feature-based approach uses a pretrained model as a representation generator. The downstream model receives those representations as features, while the task architecture remains separate.",
+    why:
+      "ELMo is the classic example: it improves many systems, but each task still needs its own architecture.",
+    related: ["ELMo", "Contextual embeddings", "Task-specific architecture"],
+  },
+  fineTuning: {
+    type: "Transfer Method",
+    title: "Fine-tuning approach",
+    body:
+      "Fine-tuning initializes a model with pretrained parameters, adds a small task head, and continues training the whole model on labeled task data.",
+    why:
+      "BERT follows this route: each downstream task gets its own fine-tuned copy, initialized from the same pretrained checkpoint.",
+    related: ["GPT", "Downstream task", "Task head"],
+  },
+  transformerEncoder: {
+    type: "Architecture Component",
+    title: "Transformer encoder",
+    body:
+      "A Transformer encoder maps an input sequence into contextual representations. Without a causal mask, every token can attend to every other token in the input.",
+    why:
+      "BERT uses the encoder stack because it is designed for language understanding rather than left-to-right generation.",
+    related: ["Self-attention", "Bidirectional", "Encoder-only"],
+  },
+  bidirectional: {
+    type: "Context Direction",
+    title: "Bidirectional",
+    body:
+      "Bidirectional means a token representation can use both left and right context. In BERT, this happens inside every Transformer encoder layer.",
+    why:
+      "For understanding tasks, the meaning of a word often depends on what comes after it as well as what comes before it.",
+    related: ["Masked Language Model", "ELMo"],
+  },
+  unidirectional: {
+    type: "Context Direction",
+    title: "Unidirectional",
+    body:
+      "A unidirectional model reads in one direction. A left-to-right language model predicts using only previous tokens.",
+    why:
+      "This is natural for generation, but it restricts representations for tasks like question answering and token classification.",
+    related: ["Causal Language Model", "GPT"],
+  },
+  causalLM: {
+    type: "Pre-training Objective",
+    title: "Causal Language Model",
+    body:
+      "A causal language model predicts the next token from previous tokens only. A causal mask prevents each position from seeing future tokens.",
+    why:
+      "GPT-style models use this objective. It is excellent for generation, but BERT argues that it is not ideal for deep bidirectional understanding.",
+    related: ["GPT", "Unidirectional", "Autoregressive generation"],
+  },
+  mlm: {
+    type: "Pre-training Objective",
+    title: "Masked Language Model",
+    body:
+      "MLM randomly selects some input tokens and asks the model to predict the original tokens from context. BERT selects 15% of WordPiece tokens as prediction targets.",
+    why:
+      "MLM lets a Transformer encoder use left and right context without seeing the target word itself.",
+    related: ["Cloze task", "Bidirectional", "Self-supervision"],
+  },
+  nsp: {
+    type: "Pre-training Objective",
+    title: "Next Sentence Prediction",
+    body:
+      "NSP asks whether sentence B is the actual next sentence after sentence A. Half the time B is real; half the time it is randomly sampled.",
+    why:
+      "The original BERT paper uses NSP to teach text-pair relationships useful for tasks like natural language inference and question answering.",
+    related: ["Sentence pairs", "NLI", "Question Answering"],
+  },
+  wordpiece: {
+    type: "Tokenization",
+    title: "WordPiece",
+    body:
+      "WordPiece is a subword tokenization method. A word like playing can be split into play and ##ing if that helps the vocabulary cover rare words.",
+    why:
+      "BERT uses a 30,000-token WordPiece vocabulary, making the model less dependent on a fixed word-level vocabulary.",
+    related: ["Subword", "Vocabulary", "Token embedding"],
+  },
+  cls: {
+    type: "Special Token",
+    title: "[CLS]",
+    body:
+      "[CLS] is placed at the beginning of every BERT input sequence. Its final hidden state is used as an aggregate representation for classification tasks.",
+    why:
+      "It gives classification tasks a stable position from which to read a sequence-level representation.",
+    related: ["Classification", "Fine-tuning", "NSP"],
+  },
+  sep: {
+    type: "Special Token",
+    title: "[SEP]",
+    body:
+      "[SEP] separates sentence A from sentence B and marks the end of the sequence.",
+    why:
+      "This lets BERT pack single-text and text-pair tasks into one input format.",
+    related: ["Sentence pair", "Segment embedding"],
+  },
+  tokenEmbedding: {
+    type: "Representation",
+    title: "Token embedding",
+    body:
+      "A token embedding represents the identity of a WordPiece token, such as dog, play, or ##ing.",
+    why:
+      "It answers the question: what token is this?",
+    related: ["WordPiece", "Input representation"],
+  },
+  segmentEmbedding: {
+    type: "Representation",
+    title: "Segment embedding",
+    body:
+      "Segment embeddings tell BERT whether a token belongs to sentence A or sentence B.",
+    why:
+      "They are crucial for sentence-pair tasks, where BERT must know which text span each token came from.",
+    related: ["Sentence A/B", "[SEP]", "Input representation"],
+  },
+  positionEmbedding: {
+    type: "Representation",
+    title: "Position embedding",
+    body:
+      "Position embeddings tell BERT where each token appears in the sequence. Unlike the original Transformer, BERT learns a separate position vector for each slot up to its maximum sequence length, rather than using a sinusoidal formula.",
+    why:
+      "Self-attention can compare tokens, but it has no built-in sense of order. BERT adds learned position vectors so the same word can be represented differently at position 3 and position 30. Since BERT is trained with a fixed maximum input length, learning position vectors is enough; it does not need the length-extrapolation advantage of sinusoidal encodings.",
+    related: ["Sequence order", "Learned positions", "Input representation"],
+  },
+  selfAttention: {
+    type: "Mechanism",
+    title: "Self-attention",
+    body:
+      "Self-attention lets each token build its new representation by weighting information from other tokens in the same sequence.",
+    why:
+      "This is how BERT connects question to passage, pronoun to antecedent, and masked word to surrounding context.",
+    related: ["QKV", "Transformer Encoder", "Bidirectional"],
+  },
+  elmo: {
+    type: "Related Work",
+    title: "ELMo",
+    body:
+      "ELMo creates contextual word representations by combining a left-to-right language model and a right-to-left language model.",
+    why:
+      "It proved that context-sensitive embeddings were valuable, but BERT argues that ELMo is not deeply bidirectional because the two directions are trained separately and concatenated later.",
+    related: ["Feature-based", "BiLM", "Contextual embeddings"],
+  },
+  gpt: {
+    type: "Related Work",
+    title: "OpenAI GPT",
+    body:
+      "OpenAI GPT is a Transformer model pretrained with a left-to-right language modeling objective and then fine-tuned on downstream tasks.",
+    why:
+      "BERT adopts the fine-tuning idea but replaces GPT's unidirectional pre-training with masked bidirectional pre-training.",
+    related: ["Causal LM", "Fine-tuning", "Unidirectional"],
+  },
+  nli: {
+    type: "Task",
+    title: "Natural Language Inference",
+    body:
+      "NLI asks whether a hypothesis is entailed by, contradicted by, or neutral with respect to a premise. Example: 'A man is playing guitar' entails 'A person is making music.'",
+    why:
+      "NLI is a sentence-pair understanding task, so it tests whether BERT can model relationships between two texts.",
+    related: ["MNLI", "RTE", "Sentence pairs"],
+  },
+  paraphrasing: {
+    type: "Task",
+    title: "Paraphrasing",
+    body:
+      "Paraphrasing tasks ask whether two texts express the same meaning. Example: 'How do I learn Python?' and 'What is the best way to study Python?' may be paraphrases.",
+    why:
+      "These tasks require semantic matching, not just word overlap.",
+    related: ["QQP", "MRPC", "Sentence pairs"],
+  },
+  ner: {
+    type: "Task",
+    title: "Named Entity Recognition",
+    body:
+      "NER labels tokens as entity types such as person, location, organization, or non-entity. Example: in 'Tesla was born in Smiljan,' Tesla can be a person and Smiljan a location.",
+    why:
+      "NER tests token-level representations rather than only a whole-sentence vector.",
+    related: ["CoNLL-2003", "Token classification"],
+  },
+  qa: {
+    type: "Task",
+    title: "Question Answering",
+    body:
+      "Extractive QA gives a question and a passage, then asks the model to select the answer span from the passage.",
+    why:
+      "BERT's SQuAD experiments show that bidirectional token representations are very useful for locating answer spans.",
+    related: ["SQuAD", "Start/end span", "Text pair"],
+  },
+  glue: {
+    type: "Benchmark",
+    title: "GLUE",
+    body:
+      "GLUE is a benchmark suite containing multiple natural language understanding tasks, including inference, similarity, paraphrase, sentiment, and acceptability.",
+    why:
+      "A high GLUE score suggests broad language-understanding ability rather than success on only one task.",
+    related: ["MNLI", "QQP", "SST-2", "CoLA"],
+  },
+  squad: {
+    type: "Benchmark",
+    title: "SQuAD",
+    body:
+      "SQuAD is an extractive question-answering benchmark. Version 1.1 assumes an answer exists; version 2.0 also includes unanswerable questions.",
+    why:
+      "SQuAD tests whether BERT can use token-level representations to find answer spans in a passage.",
+    related: ["Question Answering", "Span prediction"],
+  },
+  swag: {
+    type: "Benchmark",
+    title: "SWAG",
+    body:
+      "SWAG asks a model to choose the most plausible continuation of a situation from four candidates.",
+    why:
+      "It tests grounded commonsense-style sentence continuation, not only classification or span extraction.",
+    related: ["Commonsense inference", "Multiple choice"],
+  },
+  cola: {
+    type: "Benchmark Task",
+    title: "CoLA",
+    body:
+      "CoLA asks whether an English sentence is linguistically acceptable.",
+    why:
+      "It tests grammatical knowledge rather than topic or sentiment alone.",
+    related: ["GLUE", "Acceptability"],
+  },
+  gelu: {
+    type: "Activation",
+    title: "GELU",
+    body:
+      "GELU is the activation function BERT uses in its feed-forward layers, following the OpenAI GPT setup.",
+    why:
+      "This is one of the implementation details in the appendix that makes BERT close to GPT while isolating the main difference: bidirectional pre-training.",
+    related: ["Feed-forward network", "GPT", "Implementation"],
+  },
+};
+
+const sections = [
+  ["overview", "Overview"],
+  ["why", "Why BERT appeared"],
+  ["related", "The road to BERT"],
+  ["core", "The core idea"],
+  ["architecture", "Architecture"],
+  ["representations", "Input representation"],
+  ["pretraining", "Pre-training objectives"],
+  ["finetuning", "Fine-tuning"],
+  ["tasks", "Tasks and benchmarks"],
+  ["experiments", "What the experiments prove"],
+  ["ablation", "Ablation studies"],
+  ["appendix", "Implementation details"],
+  ["impact", "Impact and afterlife"],
+  ["commercial", "Why GPT became more visible"],
+  ["takeaways", "Takeaways"],
+];
+
+const commercialRows = [
+  {
+    family: "BERT-like encoder",
+    strength: "Reads and represents text",
+    typicalUse: "Search ranking, classification, extraction, reranking, embeddings",
+    productShape: "Invisible backend infrastructure",
+  },
+  {
+    family: "GPT-like decoder",
+    strength: "Generates text, code, and actions step by step",
+    typicalUse: "Chatbots, writing tools, coding assistants, agents, copilots",
+    productShape: "Visible user-facing product",
+  },
+];
+
+const relatedRows = [
+  {
+    line: "Static word embeddings",
+    examples: "word2vec, GloVe",
+    contribution: "Learn useful word vectors from large corpora.",
+    limitation:
+      "One word usually has one vector, so “bank” in “river bank” and “bank account” is hard to separate.",
+  },
+  {
+    line: "Feature-based contextual models",
+    examples: "ELMo",
+    contribution: "Make word representations depend on context by using left-to-right and right-to-left language models.",
+    limitation: "The two directions are trained separately and used as features inside task-specific architectures.",
+  },
+  {
+    line: "Fine-tuning pretrained Transformers",
+    examples: "OpenAI GPT",
+    contribution: "Pretrain a Transformer once, then fine-tune it with minimal task-specific parameters.",
+    limitation: "GPT is left-to-right, so each token only has previous context during pre-training.",
+  },
+  {
+    line: "BERT's move",
+    examples: "BERT",
+    contribution: "Keep the fine-tuning recipe, but pretrain a Transformer encoder with deep bidirectional context.",
+    limitation: "Pre-training is expensive, and the original NSP objective later became debated.",
+  },
+];
+
+const modelConfigRows = [
+  { model: "BERTBASE", l: "12", h: "768", a: "12", params: "110M", note: "Chosen to be similar in size to OpenAI GPT for comparison." },
+  { model: "BERTLARGE", l: "24", h: "1024", a: "16", params: "340M", note: "A larger version showing the benefit of scale under the same basic recipe." },
+];
+
+const architectureCompareRows = [
+  {
+    model: "ELMo",
+    pretraining: "Two separate LSTMs",
+    direction: "Left-to-right LM + right-to-left LM",
+    transfer: "Feature-based",
+    keyPoint:
+      "Contextual embeddings are useful, but the two directions are trained separately and concatenated later.",
+  },
+  {
+    model: "OpenAI GPT",
+    pretraining: "Transformer with causal LM",
+    direction: "Left-to-right only",
+    transfer: "Fine-tuning",
+    keyPoint:
+      "Fine-tuning is simple and powerful, but each token only sees previous tokens during pre-training.",
+  },
+  {
+    model: "BERT",
+    pretraining: "Transformer encoder with MLM + NSP",
+    direction: "Deep bidirectional",
+    transfer: "Fine-tuning",
+    keyPoint:
+      "Every layer can combine left and right context because prediction targets are hidden or corrupted first.",
+  },
+];
+
+const taskArchitectureRows = [
+  {
+    task: "Sentence-pair classification",
+    input: "[CLS] sentence A [SEP] sentence B [SEP]",
+    readout: "[CLS] vector",
+    output: "Class label",
+    example: "MNLI: entailment / contradiction / neutral",
+  },
+  {
+    task: "Single-sentence classification",
+    input: "[CLS] sentence [SEP]",
+    readout: "[CLS] vector",
+    output: "Class label",
+    example: "SST-2: positive / negative sentiment",
+  },
+  {
+    task: "Extractive question answering",
+    input: "[CLS] question [SEP] passage [SEP]",
+    readout: "Token vectors",
+    output: "Start and end positions",
+    example: "SQuAD: select an answer span from the passage",
+  },
+  {
+    task: "Token classification",
+    input: "[CLS] token sequence [SEP]",
+    readout: "Each token vector",
+    output: "A label per token",
+    example: "NER: person / location / organization / other",
+  },
+];
+
+const lossRows = [
+  {
+    part: "MLM loss",
+    signal: "Only the selected 15% prediction positions contribute to this loss.",
+    target: "The original WordPiece token before masking, random replacement, or keeping unchanged.",
+    role:
+      "Teaches BERT to reconstruct missing or corrupted tokens from bidirectional context.",
+  },
+  {
+    part: "NSP loss",
+    signal: "One binary classification loss for the [CLS] representation.",
+    target: "IsNext or NotNext.",
+    role:
+      "Teaches BERT a sentence-pair signal useful for question answering and natural language inference.",
+  },
+  {
+    part: "Total pre-training loss",
+    signal: "The sum of MLM loss and NSP loss.",
+    target: "Token reconstruction plus sentence-pair classification.",
+    role:
+      "Combines token-level contextual learning with sequence-level relationship learning.",
+  },
+];
+
+const representationRows = [
+  { token: "[CLS]", wordpiece: "[CLS]", segment: "A", position: "0", role: "Aggregate classification position." },
+  { token: "my", wordpiece: "my", segment: "A", position: "1", role: "Part of sentence A." },
+  { token: "dog", wordpiece: "dog", segment: "A", position: "2", role: "Part of sentence A." },
+  { token: "is", wordpiece: "is", segment: "A", position: "3", role: "Part of sentence A." },
+  { token: "cute", wordpiece: "cute", segment: "A", position: "4", role: "Part of sentence A." },
+  { token: "[SEP]", wordpiece: "[SEP]", segment: "A", position: "5", role: "Boundary after sentence A." },
+  { token: "he", wordpiece: "he", segment: "B", position: "6", role: "Part of sentence B." },
+  { token: "likes", wordpiece: "likes", segment: "B", position: "7", role: "Part of sentence B." },
+  { token: "playing", wordpiece: "play + ##ing", segment: "B", position: "8–9", role: "One word may become multiple WordPiece tokens." },
+  { token: "[SEP]", wordpiece: "[SEP]", segment: "B", position: "10", role: "Boundary after sentence B." },
+];
+
+const representationRouteRows = [
+  {
+    name: "ELMo",
+    text:
+      "Strong contextual features, but task systems still need custom architectures. The two directions meet late by concatenation, so the model is not deeply bidirectional in the BERT sense.",
+  },
+  {
+    name: "GPT",
+    text:
+      "Strong pre-training and fine-tuning recipe, but left-to-right pre-training limits what each token representation can use. This is natural for generation, but restrictive for understanding.",
+  },
+  {
+    name: "BERT",
+    text:
+      "Encoder-only Transformer with MLM pre-training, NSP sentence-pair training, and full-model fine-tuning for each downstream task. Each layer can use both left and right context.",
+  },
+];
+
+const pretrainingRows = [
+  {
+    objective: "Masked Language Model",
+    input: "my dog is [MASK]",
+    target: "Predict the original token, e.g. cute or hairy.",
+    reason: "Allows bidirectional context while hiding the answer token.",
+  },
+  {
+    objective: "Next Sentence Prediction",
+    input: "[CLS] sentence A [SEP] sentence B [SEP]",
+    target: "IsNext or NotNext.",
+    reason: "Trains a sentence-pair representation useful for QA and NLI.",
+  },
+];
+
+const maskRows = [
+  { case: "80%", input: "my dog is [MASK]", target: "hairy", purpose: "The main cloze-style prediction case." },
+  { case: "10%", input: "my dog is apple", target: "hairy", purpose: "Prevents the model from assuming every prediction target is visibly marked by [MASK]." },
+  { case: "10%", input: "my dog is hairy", target: "hairy", purpose: "Reduces the mismatch between pre-training inputs and real fine-tuning inputs." },
+];
+
+const fineTuningRows = [
+  {
+    task: "Single-sentence classification",
+    input: "[CLS] sentence [SEP]",
+    output: "Class label from the [CLS] vector.",
+    example: "SST-2 sentiment: positive or negative.",
+  },
+  {
+    task: "Sentence-pair classification",
+    input: "[CLS] sentence A [SEP] sentence B [SEP]",
+    output: "Class label from the [CLS] vector.",
+    example: "MNLI: entailment, contradiction, or neutral.",
+  },
+  {
+    task: "Extractive question answering",
+    input: "[CLS] question [SEP] passage [SEP]",
+    output: "Start and end token positions.",
+    example: "SQuAD: select the answer span from the passage.",
+  },
+  {
+    task: "Token classification",
+    input: "[CLS] token sequence [SEP]",
+    output: "A label for each token.",
+    example: "NER: person, location, organization, or other.",
+  },
+];
+
+const benchmarkRows = [
+  {
+    name: "MNLI — Multi-Genre Natural Language Inference",
+    task: "Natural language inference across multiple genres",
+    input: "Premise + hypothesis",
+    output: "Entailment / contradiction / neutral",
+    example:
+      "Premise: “A man is playing guitar.” Hypothesis: “A person is making music.” → entailment.",
+  },
+  {
+    name: "QQP — Quora Question Pairs",
+    task: "Paraphrase detection for user questions",
+    input: "Two Quora questions",
+    output: "Duplicate or not",
+    example:
+      "“How can I learn Python?” + “What is the best way to study Python?” → likely duplicate.",
+  },
+  {
+    name: "QNLI — Question Natural Language Inference",
+    task: "Question answering converted into sentence-pair classification",
+    input: "Question + candidate sentence",
+    output: "Contains answer or not",
+    example:
+      "Question: “Where was Tesla born?” Sentence: “Tesla was born in Smiljan.” → contains answer.",
+  },
+  {
+    name: "SST-2 — Stanford Sentiment Treebank",
+    task: "Single-sentence sentiment classification",
+    input: "One movie-review sentence",
+    output: "Positive or negative",
+    example:
+      "“A warm, funny, and beautifully acted film.” → positive.",
+  },
+  {
+    name: "CoLA — Corpus of Linguistic Acceptability",
+    task: "Grammar-sensitive acceptability judgment",
+    input: "One sentence",
+    output: "Acceptable or unacceptable",
+    example:
+      "“The book is on the table.” → acceptable; “Book the table on is.” → unacceptable.",
+  },
+  {
+    name: "STS-B — Semantic Textual Similarity Benchmark",
+    task: "Graded semantic similarity",
+    input: "Two sentences",
+    output: "Similarity score",
+    example:
+      "“A man is riding a bicycle.” + “A person is biking.” → high similarity.",
+  },
+  {
+    name: "MRPC — Microsoft Research Paraphrase Corpus",
+    task: "Paraphrase detection in news text",
+    input: "Two news sentences",
+    output: "Equivalent or not",
+    example:
+      "“The company reported higher profits.” + “The firm said earnings increased.” → likely equivalent.",
+  },
+  {
+    name: "RTE — Recognizing Textual Entailment",
+    task: "Small-data textual entailment",
+    input: "Text + hypothesis",
+    output: "Entailment or not",
+    example:
+      "Text: “The treaty was signed in Paris.” Hypothesis: “The agreement was signed in France.” → entailment.",
+  },
+  {
+    name: "SQuAD v1.1 — Stanford Question Answering Dataset",
+    task: "Extractive question answering",
+    input: "Question + passage",
+    output: "Answer span",
+    example:
+      "Question: “Where was Tesla born?” Passage: “Nikola Tesla was born in Smiljan...” → “Smiljan”.",
+  },
+  {
+    name: "SQuAD v2.0 — Stanford Question Answering Dataset with unanswerable questions",
+    task: "Extractive question answering with no-answer detection",
+    input: "Question + passage",
+    output: "Answer span or no answer",
+    example:
+      "Question asks for a date not stated in the passage → no answer.",
+  },
+  {
+    name: "SWAG — Situations With Adversarial Generations",
+    task: "Commonsense-style continuation selection",
+    input: "Context + four candidate endings",
+    output: "Best ending",
+    example:
+      "Context: “A person opens the fridge.” Ending: “They take out food.” beats implausible alternatives.",
+  },
+];
+
+const experimentRows = [
+  { area: "GLUE", result: "BERTBASE and BERTLARGE outperform prior systems across the benchmark.", meaning: "BERT is not a one-task trick; it transfers broadly across language-understanding tasks." },
+  { area: "SQuAD v1.1", result: "BERT reaches very strong span-extraction results, with BERTLARGE setting a new top result.", meaning: "Bidirectional token representations are especially useful for question answering." },
+  { area: "SQuAD v2.0", result: "BERT handles unanswerable questions by using [CLS] as the no-answer span.", meaning: "The same span-prediction machinery can be extended to answerability decisions." },
+  { area: "SWAG", result: "BERTLARGE strongly improves over ELMo-based and GPT baselines.", meaning: "BERT's sentence-pair format also works for multiple-choice commonsense-style reasoning." },
+];
+
+const ablationRows = [
+  { variant: "BERTBASE", change: "Full MLM + NSP + bidirectional encoder.", takeaway: "The reference point for the ablation." },
+  { variant: "No NSP", change: "Remove the next sentence prediction objective.", takeaway: "Performance drops most clearly on tasks involving text-pair relations, especially QNLI and SQuAD." },
+  { variant: "LTR & No NSP", change: "Use a left-to-right language model instead of MLM, with no NSP.", takeaway: "Large drops show that unidirectional pre-training is weaker for understanding, especially token-level QA." },
+  { variant: "+ BiLSTM", change: "Add a randomly initialized BiLSTM on top during fine-tuning.", takeaway: "Some right context is recovered for SQuAD, but it still cannot replace deep bidirectional pre-training." },
+  { variant: "Larger models", change: "Increase layers, hidden size, and attention heads.", takeaway: "Bigger pretrained models improve downstream tasks, even when labeled data is small." },
+  { variant: "Feature-based BERT", change: "Freeze BERT and use hidden states as features for NER.", takeaway: "BERT is strongest with fine-tuning, but its representations are also useful as fixed features." },
+];
+
+const appendixRows = [
+  { item: "Pre-training data", value: "BooksCorpus plus English Wikipedia, about 3.3B words total." },
+  { item: "Sequence construction", value: "Two text spans are packed together up to 512 tokens; 50% are real next-sentence pairs and 50% are random pairs." },
+  { item: "Masking", value: "15% of WordPiece tokens are prediction targets; selected targets use the 80/10/10 replacement strategy." },
+  { item: "Batch and steps", value: "256 sequences per batch, 1M training steps, about 128K tokens per batch at full length." },
+  { item: "Optimization", value: "Adam, learning rate 1e-4, warmup over 10K steps, linear decay, weight decay 0.01, dropout 0.1." },
+  { item: "Activation", value: "GELU instead of ReLU, following OpenAI GPT." },
+  { item: "Sequence length trick", value: "Train with length 128 for 90% of steps, then length 512 for the final 10% to reduce quadratic attention cost." },
+  { item: "Fine-tuning search", value: "Typical batch sizes 16 or 32, learning rates 5e-5 / 3e-5 / 2e-5, and 2–4 epochs." },
+];
+
+const timelineRows = [
+  { year: "2013–2017", event: "Word embeddings, seq2seq, attention, and ELMo show that learned representations and context matter." },
+  { year: "2017", event: "The Transformer replaces recurrence with attention as the main sequence-modeling engine." },
+  { year: "2018", event: "OpenAI GPT demonstrates Transformer pre-training plus fine-tuning; BERT demonstrates deep bidirectional encoder pre-training." },
+  { year: "2019–2020", event: "RoBERTa, ALBERT, DistilBERT, and many variants refine the recipe, challenge NSP, compress models, or scale training." },
+  { year: "2020s", event: "Encoder models remain important for search, retrieval, classification, reranking, extraction, and embeddings, while decoder-only GPT-style models dominate open-ended generation." },
+];
+---
+
+<PaperLayout
+  title="BERT: Pre-training of Deep Bidirectional Transformers"
+  eyebrow="NLP · BERT · 2018 / NAACL"
+  authors="Jacob Devlin · Ming-Wei Chang · Kenton Lee · Kristina Toutanova"
+  arxivUrl="https://arxiv.org/abs/1810.04805"
+  subtitle="A structured reading of the paper that turned the Transformer encoder into a general-purpose language-understanding engine."
+  sections={sections}
+  annotations={annotations}
+  initialAnnotation="bert"
+  compactTitle={true}
+>
+        <section id="overview" class="reading-section">
+          <h2>Overview</h2>
+
+          <div class="guide-box">
+            <strong>Reading guide</strong>
+            <p>
+              Read BERT as a paper about <em>how to pretrain understanding</em>. The Transformer paper showed
+              that attention could replace recurrence for sequence modeling. BERT asks a different question:
+              if a Transformer encoder can let every token look at every other token, can we pretrain that
+              encoder once and reuse it across many language-understanding tasks?
+            </p>
+          </div>
+
+          <p>
+            <em>BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding</em> introduces
+            <button class="anno" data-anno="bert">BERT</button>, an encoder-only Transformer pretrained on
+            ordinary text and then adapted to different <button class="anno" data-anno="downstream">downstream tasks</button>.
+            Its headline idea is simple: build a model whose token representations are deeply
+            <button class="anno" data-anno="bidirectional">bidirectional</button>, then make the same pretrained
+            model useful for classification, inference, question answering, and token labeling.
+          </p>
+
+          <p>
+            The important word is <strong>representation</strong>. BERT is not mainly a text generator. It is a
+            model that turns tokens into contextual vectors: the representation of a word depends on the whole
+            sentence, the sentence pair, and the task-specific fine-tuning signal. That is why the paper matters
+            historically. It helped move NLP from hand-building a new architecture for every benchmark toward
+            reusing a large pretrained model as the starting point for many tasks.
+          </p>
+
+          <div class="architecture-flow history-flow">
+            <span>Unlabeled text</span>
+            <span>→</span>
+            <span>MLM + NSP pre-training</span>
+            <span>→</span>
+            <span>Pretrained BERT</span>
+            <span>→</span>
+            <span>Task-specific fine-tuning</span>
+          </div>
+        </section>
+
+        <section id="why" class="reading-section">
+          <h2>Why BERT appeared</h2>
+
+          <p>
+            BERT appears at a specific moment in NLP history. Researchers already knew that pretraining on
+            large text corpora helped. Static word embeddings made downstream systems better; ELMo made word
+            representations depend on context; OpenAI GPT showed that a Transformer could be pretrained and
+            then fine-tuned. But the field still had an unresolved tension: the best fine-tuning recipe was
+            <button class="anno" data-anno="unidirectional">unidirectional</button>, while many understanding
+            tasks clearly require both left and right context.
+          </p>
+
+          <p>
+            A left-to-right <button class="anno" data-anno="causalLM">Causal Language Model</button> is natural
+            for generation: predict the next token from previous tokens. But language understanding often works
+            differently. In question answering, a candidate answer token may need right-side context to determine
+            its boundary. In natural language inference, one sentence must be interpreted against another. In
+            named entity recognition, a token's type can depend on words before and after it.
+          </p>
+
+          <p>
+            The obvious solution, "let every token see both sides," creates a training problem. If the model is
+            asked to predict a word while the original word is still visible in the input, it can cheat. BERT's
+            central trick is to change the objective: hide some tokens first, then predict them. This is the
+            <button class="anno" data-anno="mlm">Masked Language Model</button>. The architecture can be fully
+            bidirectional because the target token itself is removed or corrupted.
+          </p>
+
+          <div class="paper-passage">
+            <span class="passage-label">The gap BERT fills</span>
+            <p>
+              ELMo had context but was mostly <button class="anno" data-anno="featureBased">feature-based</button>. GPT had <button class="anno" data-anno="fineTuning">fine-tuning</button> but was left-to-right. BERT
+              combines the useful parts: a Transformer fine-tuning framework, plus deeply bidirectional
+              representations trained with a self-supervised objective.
+            </p>
+          </div>
+        </section>
+
+        <section id="related" class="reading-section">
+          <h2>The road to BERT</h2>
+
+          <p>
+            BERT is built by looking at what earlier representation-learning methods did well, then asking which limitations
+            still prevented a single pretrained model from serving as a general language-understanding backbone.
+          </p>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Line of work</th>
+                  <th>Examples</th>
+                  <th>What it contributed</th>
+                  <th>What BERT changes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {relatedRows.map((row) => (
+                  <tr>
+                    <td>{row.line}</td>
+                    <td>{row.examples}</td>
+                    <td>{row.contribution}</td>
+                    <td>{row.limitation}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p>
+            The closest contrast is between <button class="anno" data-anno="elmo">ELMo</button>,
+            <button class="anno" data-anno="gpt">OpenAI GPT</button>, and BERT. ELMo trains a left-to-right
+            model and a right-to-left model, then concatenates the resulting features. GPT trains a Transformer
+            with left-to-right language modeling, then fine-tunes. BERT trains one
+            <button class="anno" data-anno="transformerEncoder">Transformer encoder</button> whose layers can
+            jointly condition on both directions from the beginning.
+          </p>
+
+          <div class="concept-grid">
+            {representationRouteRows.map((item) => (
+              <div class="concept-card">
+                <h3>{item.name}</h3>
+                <p>{item.text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section id="core" class="reading-section">
+          <h2>The core idea</h2>
+
+          <p>
+            BERT's core idea is not merely "make a bigger Transformer." It is the alignment of three choices:
+            an encoder architecture, a bidirectional pre-training objective, and a fine-tuning interface that
+            can express many NLP tasks with small task heads.
+          </p>
+
+          <div class="architecture-flow">
+            <span>Transformer encoder</span>
+            <span>+</span>
+            <span>Masked token prediction</span>
+            <span>+</span>
+            <span>Sentence-pair prediction</span>
+            <span>→</span>
+            <span>Reusable language representation</span>
+          </div>
+
+          <p>
+            The subtle point is that BERT's bidirectionality is legal because the target is hidden. A normal
+            language model cannot freely look left and right while predicting a visible word. BERT can, because
+            it first replaces selected words with <code>[MASK]</code>, random words, or leaves them unchanged as
+            prediction targets. The model is trained to recover the original token, not to generate the next token
+            in a left-to-right stream.
+          </p>
+
+          <p>
+            This makes BERT especially natural for tasks where the answer is a representation, a class, or a span
+            inside the input. It is less natural for open-ended generation than GPT-style models, but extremely
+            powerful for language understanding, ranking, extraction, and classification.
+          </p>
+        </section>
+
+        <section id="architecture" class="reading-section">
+          <h2>Architecture</h2>
+
+          <p>
+            BERT's architecture is a stack of Transformer encoder blocks. The paper describes the model size
+            with three symbols: <strong>L</strong> is the number of Transformer layers,
+            <strong>H</strong> is the hidden size of each token representation, and
+            <strong>A</strong> is the number of self-attention heads. So when the paper says BERTBASE has
+            L=12, H=768, and A=12, it means every token is represented as a 768-dimensional vector through
+            a 12-layer encoder stack with 12 attention heads per layer.
+          </p>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Model</th>
+                  <th>L</th>
+                  <th>H</th>
+                  <th>A</th>
+                  <th>Parameters</th>
+                  <th>Why it matters</th>
+                </tr>
+              </thead>
+              <tbody>
+                {modelConfigRows.map((row) => (
+                  <tr>
+                    <td>{row.model}</td>
+                    <td>{row.l}</td>
+                    <td>{row.h}</td>
+                    <td>{row.a}</td>
+                    <td>{row.params}</td>
+                    <td>{row.note}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <h3>ELMo vs GPT vs BERT</h3>
+
+          <p>
+            The easiest way to understand BERT's architecture is to compare it with the two models it reacts to.
+            ELMo showed that contextual representations help. GPT showed that pre-training plus fine-tuning can work well. BERT combines
+            the useful parts of both, but replaces separate or left-to-right context with a deeply bidirectional
+            encoder.
+          </p>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Model</th>
+                  <th>Pre-training structure</th>
+                  <th>Directionality</th>
+                  <th>Transfer style</th>
+                  <th>Key point</th>
+                </tr>
+              </thead>
+              <tbody>
+                {architectureCompareRows.map((row) => (
+                  <tr>
+                    <td>{row.model}</td>
+                    <td>{row.pretraining}</td>
+                    <td>{row.direction}</td>
+                    <td>{row.transfer}</td>
+                    <td>{row.keyPoint}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="guide-box">
+            <strong>Why BERT can be bidirectional</strong>
+            <p>
+              A normal left-to-right language model cannot simply look at both sides when predicting a token,
+              because the original token would still be visible in the input. BERT solves this by changing the
+              pre-training problem. It first hides or corrupts selected tokens, then asks the encoder to recover
+              the original tokens. The architecture can attend bidirectionally because the answer token itself is
+              no longer directly available.
+            </p>
+          </div>
+
+          <h3>One encoder, different task heads</h3>
+
+          <p>
+            The same pretrained BERT encoder can be reused for different downstream tasks. What changes is not
+            the main encoder stack, but the input format and the small output layer. This is the practical reason
+            BERT felt so powerful: many tasks could be reframed as "put the right sequence into BERT, then read
+            the right output position."
+          </p>
+
+          <div class="architecture-flow history-flow">
+            <span>Input tokens</span>
+            <span>→</span>
+            <span>BERT encoder</span>
+            <span>→</span>
+            <span>[CLS] vector or token vectors</span>
+            <span>→</span>
+            <span>task head</span>
+          </div>
+
+          <p>
+            This section is where BERT's "encoder-only" identity matters. GPT-style models are built for
+            autoregressive generation, so their attention is causally masked. BERT removes that causal mask,
+            uses a Transformer encoder, and relies on masked prediction to keep pre-training valid.
+          </p>
+        </section>
+
+        <section id="representations" class="reading-section">
+          <h2>Input representation</h2>
+
+          <p>
+            BERT's input format is one of the paper's most practical contributions. It creates a single sequence
+            format that can represent one sentence, two sentences, a question-passage pair, or a multiple-choice
+            candidate. Every input starts with <button class="anno" data-anno="cls">[CLS]</button>, and text spans
+            are separated by <button class="anno" data-anno="sep">[SEP]</button>.
+          </p>
+
+          <div class="formula-card emphasis-formula">
+            <code>input vector = token embedding + segment embedding + position embedding</code>
+          </div>
+
+          <p>
+            These are added rather than concatenated because all three vectors have the same hidden dimension
+            <code>H</code>. For BERTBASE, each one is 768-dimensional, and their sum is still 768-dimensional.
+            The model learns the scale and use of each component during training. In plain language:
+            <button class="anno" data-anno="tokenEmbedding">token embeddings</button> say what the token is,
+            <button class="anno" data-anno="segmentEmbedding">segment embeddings</button> say which text span it
+            belongs to, and <button class="anno" data-anno="positionEmbedding">position embeddings</button> say
+            where it appears.
+          </p>
+
+          <div class="architecture-flow">
+            <span>[CLS]</span>
+            <span>my dog is cute</span>
+            <span>[SEP]</span>
+            <span>he likes play ##ing</span>
+            <span>[SEP]</span>
+          </div>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Surface token</th>
+                  <th>WordPiece</th>
+                  <th>Segment</th>
+                  <th>Position</th>
+                  <th>Role</th>
+                </tr>
+              </thead>
+              <tbody>
+                {representationRows.map((row) => (
+                  <tr>
+                    <td>{row.token}</td>
+                    <td>{row.wordpiece}</td>
+                    <td>{row.segment}</td>
+                    <td>{row.position}</td>
+                    <td>{row.role}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p>
+            Notice that <button class="anno" data-anno="wordpiece">WordPiece</button> tokenization can split a
+            single word into multiple subword tokens. BERT predicts and represents WordPiece tokens, not always
+            whole human-written words. This makes the vocabulary manageable while still covering rare or novel words.
+          </p>
+        </section>
+
+        <section id="pretraining" class="reading-section">
+          <h2>Pre-training objectives</h2>
+
+          <p>
+            BERT is pretrained on unlabeled text, but that does not mean it has no training targets. The targets
+            are created automatically from the text itself. This is why BERT's pre-training is better described
+            as <button class="anno" data-anno="selfSupervision">self-supervision</button>: ordinary text is
+            converted into prediction problems before any human-labeled downstream dataset is used.
+          </p>
+
+          <h3>The pre-training to fine-tuning pipeline</h3>
+
+          <p>
+            BERT follows a two-stage recipe: first train a general encoder with self-supervised objectives,
+            then copy the same pretrained parameters into different downstream models. The architecture is almost
+            the same on both sides; the task-specific output layer changes.
+          </p>
+
+          <div class="architecture-flow history-flow">
+            <span>BooksCorpus + Wikipedia</span>
+            <span>→</span>
+            <span>MLM + NSP</span>
+            <span>→</span>
+            <span>Pretrained BERT</span>
+            <span>→</span>
+            <span>Fine-tuned task models</span>
+          </div>
+
+          <div class="guide-box">
+            <strong>The key distinction</strong>
+            <p>
+              Pre-training learns a general initialization from large text. Fine-tuning creates separate
+              task-specific models from that same initialization. In the original BERT setup, MNLI, SQuAD,
+              SWAG, and NER do not share one final multitask model; each task gets its own fine-tuned copy.
+            </p>
+          </div>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Objective</th>
+                  <th>Example input</th>
+                  <th>Training target</th>
+                  <th>Why it exists</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pretrainingRows.map((row) => (
+                  <tr>
+                    <td>{row.objective}</td>
+                    <td><code>{row.input}</code></td>
+                    <td>{row.target}</td>
+                    <td>{row.reason}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Masked Language Model</h3>
+
+          <p>
+            The <button class="anno" data-anno="mlm">Masked Language Model</button> is BERT's answer to the
+            bidirectionality problem. A standard language model predicts from one direction to avoid seeing the
+            target token. BERT instead corrupts some input positions first. The encoder can then look left and
+            right, because the original target token has been removed or changed.
+          </p>
+
+          <p>
+            BERT selects 15% of WordPiece tokens as prediction targets. Those selected targets are handled with
+            the 80/10/10 masking strategy below. Notice that the model's target is always the original token,
+            even when the input token is unchanged.
+          </p>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Selected target case</th>
+                  <th>Input shown to BERT</th>
+                  <th>Prediction target</th>
+                  <th>Purpose</th>
+                </tr>
+              </thead>
+              <tbody>
+                {maskRows.map((row) => (
+                  <tr>
+                    <td>{row.case}</td>
+                    <td><code>{row.input}</code></td>
+                    <td><code>{row.target}</code></td>
+                    <td>{row.purpose}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Next Sentence Prediction</h3>
+
+          <p>
+            <button class="anno" data-anno="nsp">Next Sentence Prediction</button> gives BERT a sentence-pair
+            pre-training signal. For each pair, sentence B is the true next sentence 50% of the time and a random
+            sentence 50% of the time. The final hidden state of <button class="anno" data-anno="cls">[CLS]</button>
+            is used to predict <strong>IsNext</strong> or <strong>NotNext</strong>.
+          </p>
+
+          <div class="architecture-flow history-flow">
+            <span>[CLS] sentence A [SEP] sentence B [SEP]</span>
+            <span>→</span>
+            <span>BERT encoder</span>
+            <span>→</span>
+            <span>[CLS]</span>
+            <span>→</span>
+            <span>IsNext / NotNext</span>
+          </div>
+
+          <p>
+            NSP is most naturally connected to text-pair tasks. Question answering, natural language inference,
+            and paraphrase detection all require the model to represent relationships between two pieces of text.
+            Later models debated whether NSP was the best way to learn this signal, but in the original BERT
+            paper it is part of the main recipe and is tested in the ablation studies.
+          </p>
+
+          <h3>Pre-training loss</h3>
+
+          <p>
+            BERT's pre-training loss has two parts: a token-level MLM loss and a sequence-level NSP loss. The
+            paper uses the sum of these losses. Conceptually, the model is punished when it fails to reconstruct
+            selected original tokens, and also when it fails to classify whether the second text segment is the
+            real next segment.
+          </p>
+
+          <div class="formula-card emphasis-formula">
+            <div class="formula-label">Total pre-training loss</div>
+
+            <div class="formula-line">
+              <span>L<sub>BERT</sub></span>
+              <span>=</span>
+              <span>L<sub>MLM</sub></span>
+              <span>+</span>
+              <span>L<sub>NSP</sub></span>
+            </div>
+
+            <p class="formula-caption">
+              BERT is trained with two losses at the same time: one for reconstructing selected tokens,
+              and one for judging whether two text segments are consecutive.
+            </p>
+
+            <p class="formula-note">
+              <strong>L<sub>MLM</sub></strong> is computed only over the selected 15% prediction positions.
+              <strong>L<sub>NSP</sub></strong> is computed from the binary IsNext / NotNext classifier using
+              the <code>[CLS]</code> representation.
+            </p>
+          </div>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Loss part</th>
+                  <th>Where the signal comes from</th>
+                  <th>Target</th>
+                  <th>Role in pre-training</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lossRows.map((row) => (
+                  <tr>
+                    <td>{row.part}</td>
+                    <td>{row.signal}</td>
+                    <td>{row.target}</td>
+                    <td>{row.role}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p>
+            The MLM loss is not computed for every token in the sequence. It is computed only at the selected
+            prediction positions, which are 15% of WordPiece tokens. For each selected position, BERT takes the
+            final hidden vector at that position and predicts a distribution over the vocabulary. The correct
+            class is the original token id. This is the same cross-entropy idea used in many classification
+            problems, but here the classes are vocabulary items.
+          </p>
+
+          <p>
+            The NSP loss is a binary cross-entropy classification loss. The input pair is encoded by BERT, the
+            <code>[CLS]</code> vector is read as the sequence-pair representation, and the classifier predicts
+            whether the pair is <strong>IsNext</strong> or <strong>NotNext</strong>. The final pre-training update
+            combines this sentence-pair loss with the masked-token reconstruction loss.
+          </p>
+
+          <div class="guide-box">
+            <strong>Why this loss design matters</strong>
+            <p>
+              MLM makes deep bidirectional pre-training possible. NSP adds a sentence-pair signal. Together they
+              let BERT learn both local token meaning and broader text-pair relationships before any supervised
+              downstream fine-tuning.
+            </p>
+          </div>
+        </section>
+
+        <section id="finetuning" class="reading-section">
+          <h2>Fine-tuning</h2>
+
+          <p>
+            BERT's downstream recipe is deliberately plain. Start from the same pretrained checkpoint, add a
+            small task-specific output layer, and train all parameters on the labeled dataset.
+            This is the fine-tuning approach, not just feature extraction.
+            Each downstream task gets a separate fine-tuned model, but they all begin from the same pretrained BERT.
+          </p>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Task type</th>
+                  <th>BERT input</th>
+                  <th>Output</th>
+                  <th>Example</th>
+                </tr>
+              </thead>
+              <tbody>
+                {fineTuningRows.map((row) => (
+                  <tr>
+                    <td>{row.task}</td>
+                    <td><code>{row.input}</code></td>
+                    <td>{row.output}</td>
+                    <td>{row.example}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p>
+            The most elegant case is extractive question answering. BERT reads the question and passage as one
+            packed sequence. Then the task head scores each passage token as a possible start and a possible end.
+            For SQuAD v2.0, where some questions have no answer, BERT treats the <code>[CLS]</code> position as
+            the no-answer span and compares that score against the best non-null span.
+          </p>
+
+          <p>
+            This is why BERT reduced the need for heavily engineered task architectures. Earlier systems often
+            designed separate cross-attention modules for each task. BERT lets the self-attention inside the packed
+            input perform much of that interaction automatically.
+          </p>
+        </section>
+
+        <section id="tasks" class="reading-section">
+          <h2>Tasks and benchmarks</h2>
+
+          <p>
+            The paper's benchmarks are not random. They cover sentence-level classification, sentence-pair
+            reasoning, token-level extraction, and commonsense-style multiple choice. This breadth is the evidence
+            behind the claim that BERT learns general-purpose language representations.
+          </p>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Dataset / benchmark</th>
+                  <th>Task</th>
+                  <th>Input</th>
+                  <th>Output</th>
+                  <th>Example</th>
+                </tr>
+              </thead>
+              <tbody>
+                {benchmarkRows.map((row) => (
+                  <tr>
+                    <td>{row.name}</td>
+                    <td>{row.task}</td>
+                    <td>{row.input}</td>
+                    <td>{row.output}</td>
+                    <td>{row.example}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p>
+            Some names are especially important for reading the paper. <button class="anno" data-anno="nli">Natural
+            Language Inference</button> asks whether one sentence follows from another. <button class="anno" data-anno="paraphrasing">Paraphrasing</button>
+            asks whether two texts mean the same thing. <button class="anno" data-anno="ner">Named Entity Recognition</button>
+            assigns labels to tokens. <button class="anno" data-anno="qa">Question Answering</button> asks BERT to
+            find answer spans. Together, these tasks test very different uses of the same representation backbone.
+          </p>
+        </section>
+
+        <section id="experiments" class="reading-section">
+          <h2>What the experiments prove</h2>
+
+          <p>
+            The experiments are best read as a proof of the BERT recipe. The point is not simply that the tables
+            contain high numbers. The point is that a single architecture pattern works across very different
+            task formats with only small output changes.
+          </p>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Experiment area</th>
+                  <th>Main result</th>
+                  <th>Interpretation</th>
+                </tr>
+              </thead>
+              <tbody>
+                {experimentRows.map((row) => (
+                  <tr>
+                    <td>{row.area}</td>
+                    <td>{row.result}</td>
+                    <td>{row.meaning}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p>
+            <button class="anno" data-anno="glue">GLUE</button> is the broad test: BERT improves tasks involving
+            inference, similarity, sentiment, paraphrase, and grammatical acceptability. <button class="anno" data-anno="squad">SQuAD</button>
+            is the token-level test: the model must identify exact spans, not just classify whole sentences.
+            <button class="anno" data-anno="swag">SWAG</button> is the multiple-choice continuation test: the model
+            must score candidate endings against a context.
+          </p>
+
+          <p>
+            The comparison with GPT is especially revealing. BERTBASE was intentionally sized close to OpenAI GPT,
+            so the improvement cannot be explained only by saying "BERT is bigger." The paper argues that the
+            key difference is the attention mask and objective: GPT is left-to-right; BERT is bidirectional through MLM.
+          </p>
+        </section>
+
+        <section id="ablation" class="reading-section">
+          <h2>Ablation studies</h2>
+
+          <p>
+            The ablations ask what part of the recipe actually matters. If BERT only worked because of more data
+            or more parameters, removing NSP or replacing MLM with left-to-right language modeling would not be so
+            informative. But the ablation results show clear patterns.
+          </p>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Variant</th>
+                  <th>What changes</th>
+                  <th>Takeaway</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ablationRows.map((row) => (
+                  <tr>
+                    <td>{row.variant}</td>
+                    <td>{row.change}</td>
+                    <td>{row.takeaway}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p>
+            The most important ablation is the left-to-right variant. It performs much worse on SQuAD, which is
+            exactly where the theory predicts trouble: token-level answer representations need right context.
+            Adding a randomly initialized BiLSTM helps SQuAD but does not catch up, because it is not the same as
+            pretraining every layer with bidirectional context from the start.
+          </p>
+
+          <p>
+            The model-size ablation also mattered historically. It showed that once a model is sufficiently
+            pretrained, larger encoders can help even on small downstream datasets. This was one early sign that
+            scale and pretraining could change the usual fear that large models simply overfit small NLP tasks.
+          </p>
+        </section>
+
+        <section id="appendix" class="reading-section">
+          <h2>Implementation details</h2>
+
+          <p>
+            BERT's main idea is simple, but the implementation recipe matters. The model is not just a
+            bidirectional encoder in the abstract; it is trained with a specific data construction process,
+            masking strategy, sequence length schedule, and fine-tuning setup. These details make the method
+            reproducible and help explain why the original results were strong.
+          </p>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Detail</th>
+                  <th>Value / explanation</th>
+                </tr>
+              </thead>
+              <tbody>
+                {appendixRows.map((row) => (
+                  <tr>
+                    <td>{row.item}</td>
+                    <td>{row.value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p>
+            The most important implementation detail is that BERT does not predict every token. It selects a
+            small subset of WordPiece tokens as prediction targets, corrupts some of them, and computes the MLM
+            loss only at those selected positions. This makes MLM less prediction-dense than a left-to-right
+            language model, but it gives the model something more valuable for understanding: every selected
+            token can be recovered using both left and right context.
+          </p>
+
+          <p>
+            The sequence-length schedule also matters. Full self-attention becomes expensive as the sequence
+            gets longer, so BERT is mostly pretrained with shorter sequences and only later trained with the
+            full 512-token length. This keeps pre-training more efficient while still teaching the model how to
+            use long-range position embeddings.
+          </p>
+
+          <div class="paper-passage">
+            <span class="passage-label">A useful way to read the recipe</span>
+            <p>
+              The architecture gives BERT the capacity to connect every token with every other token. The
+              masking procedure prevents the model from seeing the answer directly. The large text corpus gives
+              it broad language exposure. Fine-tuning then turns that general representation into a task-specific
+              model. The recipe works because these pieces support each other.
+            </p>
+          </div>
+        </section>
+
+        <section id="impact" class="reading-section">
+          <h2>Impact and afterlife</h2>
+
+          <p>
+            BERT's impact was both scientific and practical. Scientifically, it made masked encoder pre-training a
+            standard baseline for language understanding. Practically, it gave NLP engineers a reusable pattern:
+            take a pretrained checkpoint, convert the task into a BERT input format, add a small head, and fine-tune.
+          </p>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Period</th>
+                  <th>What changed</th>
+                </tr>
+              </thead>
+              <tbody>
+                {timelineRows.map((row) => (
+                  <tr>
+                    <td>{row.year}</td>
+                    <td>{row.event}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p>
+            BERT also clarified a split that still matters. Encoder models are excellent when the goal is to
+            understand, classify, rank, embed, retrieve, or extract from given text. Decoder-only models are better
+            suited to open-ended generation. Modern systems often combine these families: a BERT-like encoder or
+            embedding model may retrieve and rank evidence, while a GPT-like decoder writes the final response.
+          </p>
+        </section>
+
+        <section id="commercial" class="reading-section">
+          <h2>Why GPT became more visible</h2>
+
+          <p>
+            A natural question after reading BERT is: if BERT was so important, why do most people hear about
+            GPT products instead of BERT products? The short answer is that <strong>generation is easier to
+            package as a consumer product, while understanding is usually hidden inside infrastructure</strong>.
+          </p>
+
+          <p>
+            GPT-style models are trained to continue text from left to right. That objective maps directly onto
+            products people can see: chatbots, writing assistants, coding assistants, copilots, and agents. A user
+            types a prompt, and the model produces a visible answer. The model's core ability is already the
+            interface.
+          </p>
+
+          <div class="architecture-flow history-flow">
+            <span>User prompt</span>
+            <span>→</span>
+            <span>GPT-like decoder</span>
+            <span>→</span>
+            <span>Generated answer</span>
+          </div>
+
+          <p>
+            BERT-style models have a different product shape. BERT reads a piece of text and turns it into a
+            contextual representation. That representation is useful for judging relevance, assigning labels,
+            extracting spans, matching a query to a document, or ranking candidates. These are extremely valuable
+            commercial functions, but they usually happen behind the scenes.
+          </p>
+
+          <div class="architecture-flow history-flow">
+            <span>Query or document</span>
+            <span>→</span>
+            <span>BERT-like encoder</span>
+            <span>→</span>
+            <span>Vector, label, score, or span</span>
+            <span>→</span>
+            <span>System decision</span>
+          </div>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Model family</th>
+                  <th>Core strength</th>
+                  <th>Common commercial use</th>
+                  <th>Product shape</th>
+                </tr>
+              </thead>
+              <tbody>
+                {commercialRows.map((row) => (
+                  <tr>
+                    <td>{row.family}</td>
+                    <td>{row.strength}</td>
+                    <td>{row.typicalUse}</td>
+                    <td>{row.productShape}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p>
+            This is why BERT can be everywhere without feeling like a product. Search engines, recommendation
+            systems, customer-support routing, content moderation, document retrieval, entity extraction, and
+            reranking systems all need strong language understanding. Users usually see the final ranked result,
+            label, or extracted answer, not the encoder model that helped produce it.
+          </p>
+
+          <div class="guide-box">
+            <strong>A useful mental model</strong>
+            <p>
+              BERT reads well. GPT writes well. That sentence is simplified, but it explains the commercial
+              difference. Reading is often an internal capability inside a larger system; writing can become a
+              standalone product interface.
+            </p>
+          </div>
+
+          <p>
+            BERT also shaped later systems even when the product name did not include "BERT." Many later encoder
+            models and embedding models inherit the same broad idea: pretrain a language model to produce useful
+            representations, then use those representations for search, ranking, classification, retrieval, and
+            extraction. GPT became more visible because the user can talk to it directly, but BERT's legacy lives
+            in the infrastructure that helps machines understand.
+          </p>
+        </section>
+
+        <section id="takeaways" class="reading-section final-takeaways">
+          <h2>Takeaways</h2>
+
+          <ol>
+            <li>BERT is an encoder-only Transformer designed for language understanding rather than open-ended generation.</li>
+            <li>Its key training idea is MLM: hide or corrupt selected tokens, then predict the originals from bidirectional context.</li>
+            <li>NSP adds a sentence-pair pre-training signal for the original BERT recipe.</li>
+            <li>The input representation is the sum of token, segment, and position embeddings.</li>
+            <li><code>[CLS]</code> provides a sequence-level representation; <code>[SEP]</code> separates text spans.</li>
+            <li>Fine-tuning means each downstream task gets its own task head and its own fine-tuned copy of the pretrained model.</li>
+            <li>BERT's experiments show that one pretrained backbone can handle GLUE, SQuAD, SWAG, and token-level tasks with minimal architecture changes.</li>
+            <li>The ablations show that deep bidirectional pre-training matters, especially for token-level question answering.</li>
+            <li>BERT sits historically between ELMo and GPT: it keeps contextual representation and fine-tuning, but changes the directionality problem.</li>
+            <li>Its afterlife includes many encoder variants and a lasting role in search, retrieval, classification, ranking, extraction, and embeddings.</li>
+          </ol>
+        </section>
+</PaperLayout>

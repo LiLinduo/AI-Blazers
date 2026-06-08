@@ -40,7 +40,7 @@ export const papers: Paper[] = [
     subtopic: "BERT",
     year: 2018,
     title: "BERT: Pre-training of Deep Bidirectional Transformers",
-    status: "soon",
+    status: "ready",
   },
   {
     id: "gpt1-2018",
