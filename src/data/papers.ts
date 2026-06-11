@@ -83,6 +83,14 @@ export const papers: Paper[] = [
     status: "soon",
   },
   {
+    id: "rl-for-nlu-2025",
+    topic: "LLM",
+    subtopic: "RL for NLU",
+    year: 2025,
+    title: "Improving the Language Understanding Capabilities of Large Language Models Using Reinforcement Learning",
+    status: "ready",
+  },
+  {
     id: "react-2022",
     topic: "Agent",
     subtopic: "ReAct",

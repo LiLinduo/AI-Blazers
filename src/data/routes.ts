@@ -21,6 +21,7 @@ export const routes: Route[] = [
       "gpt3-2020",
       "instruction-tuning-2021",
       "rlhf-2022",
+      "rl-for-nlu-2025",
     ],
   },
   {

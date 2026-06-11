@@ -1,0 +1,1921 @@
+---
+import PaperLayout from "../../components/paper/PaperLayout.astro";
+
+const annotations = {
+  nlu: {
+    type: "Task Family",
+    title: "Natural Language Understanding",
+    body:
+      "NLU tasks ask a model to understand, compare, classify, or reason about text. Examples include sentiment classification, entailment, paraphrase detection, semantic similarity, and reading comprehension.",
+    why:
+      "This paper studies whether reinforcement learning can make generation-based LLMs behave more like reliable NLU systems.",
+    related: ["GLUE", "SuperGLUE"],
+  },
+  glue: {
+    type: "Benchmark",
+    title: "GLUE",
+    body:
+      "GLUE is a suite of natural language understanding tasks, including sentiment, paraphrase, semantic similarity, acceptability, and inference.",
+    why:
+      "It is the main benchmark where the paper shows PPO fine-tuning beats prompting, supervised fine-tuning, and even BERT-large on average.",
+    related: ["SST-2", "CoLA", "MNLI", "STS-B"],
+  },
+  superglue: {
+    type: "Benchmark",
+    title: "SuperGLUE",
+    body:
+      "SuperGLUE is a harder follow-up to GLUE. It includes tasks that require stronger reading, reasoning, coreference, commonsense, and contextual understanding.",
+    why:
+      "The paper uses SuperGLUE as a stress test showing that PPO also helps beyond the easier GLUE setting.",
+    related: ["BoolQ", "COPA", "MultiRC", "WiC"],
+  },
+  sft: {
+    type: "Training Method",
+    title: "Supervised Fine-Tuning",
+    body:
+      "SFT trains the model on prompt + input + ground-truth answer using the usual next-token prediction objective.",
+    why:
+      "It is the obvious fine-tuning baseline. The paper's claim is not merely that fine-tuning helps, but that PPO fine-tuning helps more than SFT.",
+    related: ["Next-token prediction", "LoRA"],
+  },
+  ppo: {
+    type: "RL Algorithm",
+    title: "Proximal Policy Optimization",
+    body:
+      "PPO is a policy-gradient reinforcement learning algorithm that improves a policy while limiting how far the new policy can move away from the old policy in each update.",
+    why:
+      "For LLMs, PPO can reward complete generated answers, not just imitate a target answer token by token.",
+    related: ["GRPO"],
+  },
+  policy: {
+    type: "RL Concept",
+    title: "Policy",
+    body:
+      "A policy gives a probability distribution over actions in a state. For an LLM, the state is the current token prefix, the action is the next token, and the policy is the model's next-token distribution.",
+    why:
+      "This is why an LLM can be treated as a reinforcement-learning agent without changing its basic generation interface.",
+    related: ["Action", "State"],
+  },
+  oldPolicy: {
+    type: "PPO Concept",
+    title: "Old Policy",
+    body:
+      "The old policy is the model snapshot that generated the current batch of responses. It is not permanently fixed; it changes each rollout iteration.",
+    why:
+      "PPO compares the currently updated policy against this rollout policy so that one update does not move too far from the behavior that produced the data.",
+    related: ["PPO clipping", "Rollout"],
+  },
+  referenceModel: {
+    type: "PPO Concept",
+    title: "Reference Model",
+    body:
+      "The reference model is usually a fixed copy of the model before PPO training. TRL-style PPO often includes a KL penalty to keep the current policy close to this reference model.",
+    why:
+      "The old policy controls local update size; the reference model controls global drift away from the original LLM behavior.",
+    related: ["KL penalty", "Language modeling ability"],
+  },
+  reward: {
+    type: "RL Signal",
+    title: "Reward",
+    body:
+      "A reward is the scalar score the environment gives a generated response. In the main experiments, the reward is mostly based on whether the extracted answer matches the ground-truth label.",
+    why:
+      "Reward design is the real target definition. PPO only optimizes whatever reward the paper gives it.",
+    related: ["Reward model", "Reward hacking"],
+  },
+  advantage: {
+    type: "RL Quantity",
+    title: "Advantage",
+    body:
+      "Advantage estimates whether a generated token was better or worse than expected in that state. Positive advantage increases the token's probability; negative advantage decreases it.",
+    why:
+      "This lets the model learn from final response-level rewards while assigning credit back to individual token decisions.",
+    related: ["GAE", "Critic", "TD error"],
+  },
+  critic: {
+    type: "RL Component",
+    title: "Critic / Value Head",
+    body:
+      "The critic predicts a scalar value for a token prefix: how much future reward the model should expect from this state. In PPO for LLMs, it is often implemented as a value head on top of the model representation.",
+    why:
+      "It stabilizes training by estimating what the model expected before seeing the final reward.",
+    related: ["Value function", "Actor-critic", "TD error"],
+  },
+  grpo: {
+    type: "RL Algorithm",
+    title: "GRPO",
+    body:
+      "Group Relative Policy Optimization is a critic-free RL method. It samples multiple responses for a prompt and scores each response relative to the group.",
+    why:
+      "The paper compares PPO with GRPO to show that RL-style fine-tuning helps, while also exposing a runtime trade-off.",
+    related: ["PPO"],
+  },
+  lora: {
+    type: "Parameter-Efficient Fine-Tuning",
+    title: "LoRA",
+    body:
+      "LoRA freezes the original large weight matrices and learns small low-rank update matrices instead of updating the whole model.",
+    why:
+      "This reduces memory and compute, and also constrains adaptation so the model is less likely to destroy its original language and instruction-following abilities.",
+    related: ["Low-rank update", "Frozen backbone", "PEFT"],
+  },
+  zeroShot: {
+    type: "Prompting Setup",
+    title: "Zero-shot Prompting",
+    body:
+      "Zero-shot prompting gives the model only the task instruction and the input query. It does not include labeled examples in the prompt and does not update model weights.",
+    why:
+      "This baseline asks whether the instruction-tuned LLM can perform the NLU task from the task description alone.",
+    related: ["Few-shot", "Prompting", "No parameter update"],
+  },
+  fewShot: {
+    type: "Prompting Setup",
+    title: "Few-shot Prompting",
+    body:
+      "Few-shot prompting puts a few labeled examples inside the prompt. It does not update model weights.",
+    why:
+      "This baseline asks whether in-context examples are enough before doing any actual fine-tuning.",
+    related: ["Zero-shot", "In-context learning", "No parameter update"],
+  },
+  rewardModel: {
+    type: "Reward Design",
+    title: "Reward Model",
+    body:
+      "A reward model is a learned scorer that assigns rewards to generated responses. The paper trains a BERT-based reward model from GPT-4o-ranked responses.",
+    why:
+      "It tests whether PPO can optimize richer qualities such as explanation quality, not only label correctness.",
+    related: ["Pairwise ranking", "GPT-4o evaluator", "PPO-RM"],
+  },
+  stsb: {
+    type: "GLUE Task",
+    title: "STS-B",
+    body:
+      "STS-B asks for a semantic similarity score between two sentences on a 0 to 5 scale. It is a regression task, not a classification task.",
+    why:
+      "The paper uses a different reward for STS-B: the closer the predicted score is to the true score, the higher the reward.",
+    related: ["Semantic similarity", "Regression"],
+  },
+  financialPhrasebank: {
+    type: "Dataset",
+    title: "Financial PhraseBank",
+    body:
+      "Financial PhraseBank is a sentiment dataset for financial/economic text. The paper uses it as an out-of-domain sentiment test after fine-tuning on SST-2.",
+    why:
+      "It checks whether a sentiment-tuned model can generalize beyond movie-review sentiment.",
+    related: ["Sentiment analysis", "Financial text", "Zero-shot transfer"],
+  },
+  mentalHealth: {
+    type: "Dataset",
+    title: "Mental Health Dataset",
+    body:
+      "The paper uses this as another sentiment-style downstream dataset for zero-shot generalization after SST-2 PPO fine-tuning.",
+    why:
+      "It makes the generalization test broader than ordinary movie or financial sentiment.",
+    related: ["Sentiment analysis", "OOD evaluation"],
+  },
+  emotion: {
+    type: "Dataset",
+    title: "Emotion Dataset",
+    body:
+      "Emotion is a dataset for recognizing affective categories in text. The paper uses it in the sentiment-analysis generalization group.",
+    why:
+      "It tests whether the model's learned sentiment behavior transfers to a related but not identical affective classification task.",
+    related: ["Emotion recognition", "Sentiment transfer"],
+  },
+  babi: {
+    type: "Dataset",
+    title: "Babi-NLI",
+    body:
+      "Babi-NLI is used as an NLI-style downstream task in the paper's zero-shot generalization evaluation after MNLI fine-tuning.",
+    why:
+      "It asks whether NLI behavior learned from MNLI transfers to a different inference dataset.",
+    related: ["NLI", "MNLI", "Generalization"],
+  },
+  siga: {
+    type: "Dataset",
+    title: "SIGA-NLI",
+    body:
+      "SIGA-NLI is a naturalistic NLI dataset involving scalar implicatures and gradable adjectives.",
+    why:
+      "It is one of the strongest reported GPT-4o comparison results in the paper, but it should be read as a narrow task-specific comparison rather than a general model ranking.",
+    related: ["NLI", "Scalar implicature", "Out-of-domain"],
+  },
+};
+
+const sections = [
+  ["overview", "Overview"],
+  ["problem", "The problem"],
+  ["background", "Background concepts"],
+  ["method", "The method"],
+  ["ppo", "How PPO actually runs"],
+  ["rewards", "Reward design"],
+  ["lora", "Why LoRA"],
+  ["experiments", "Experiments"],
+  ["results", "Main results"],
+  ["reward-model", "Reward model experiment"],
+  ["limitations", "Limitations"],
+  ["experiment-design", "How to design experiments"],
+  ["takeaways", "Takeaways"],
+];
+
+const benchmarkRows = [
+  {
+    name: "GLUE",
+    role: "Standard NLU benchmark suite",
+    what: "Sentiment, paraphrase, acceptability, semantic similarity, and inference tasks.",
+    why: "The main proof that PPO can improve LLM performance on classic language-understanding tasks.",
+  },
+  {
+    name: "SuperGLUE",
+    role: "Harder NLU benchmark suite",
+    what: "Reading, commonsense, coreference, word-sense, and reasoning-heavy tasks.",
+    why: "A stress test showing the method is not only tuned to the easier GLUE setting.",
+  },
+  {
+    name: "Financial PhraseBank / Labelled Financial News",
+    role: "Sentiment generalization datasets",
+    what: "Financial-domain sentiment classification.",
+    why: "They test whether SST-2 PPO fine-tuning transfers beyond movie-review sentiment.",
+  },
+  {
+    name: "Mental Health / Emotion",
+    role: "Affective-text generalization datasets",
+    what: "Sentiment or emotion-related text classification.",
+    why: "They broaden the out-of-domain sentiment evaluation.",
+  },
+  {
+    name: "Babi-NLI / SIGA-NLI",
+    role: "NLI generalization datasets",
+    what: "Inference-style datasets, with SIGA-NLI focusing on scalar implicature and gradable adjectives.",
+    why: "They test whether MNLI PPO fine-tuning transfers to other inference problems.",
+  },
+  {
+    name: "SQuAD",
+    role: "Reading comprehension appendix task",
+    what: "Question answering by selecting an answer span from a passage.",
+    why: "It shows that the RL framing can use task metrics such as Exact Match and F1 as rewards, not only label matching.",
+  },
+];
+
+const promptingRows = [
+  {
+    setup: "Zero-shot prompting",
+    weights: "No weight update",
+    input: "Task instruction + query",
+    purpose: "Tests whether instruction-following alone is enough.",
+  },
+  {
+    setup: "Few-shot prompting",
+    weights: "No weight update",
+    input: "Task instruction + 1–5 labeled examples + query",
+    purpose: "Tests whether in-context examples can induce the task behavior.",
+  },
+  {
+    setup: "SFT",
+    weights: "LoRA weights updated",
+    input: "Prompt + query + ground-truth answer",
+    purpose: "Trains the model to imitate correct answer text with next-token prediction.",
+  },
+  {
+    setup: "PPO",
+    weights: "LoRA policy weights updated; value head updated",
+    input: "Prompt + query; model generates answer, then receives reward",
+    purpose: "Trains the model to generate responses that score well under the task reward.",
+  },
+];
+
+const ppoStepRows = [
+  {
+    step: "1. Rollout",
+    action: "Use the current policy to generate responses for a batch of prompts.",
+    updated: "Nothing yet. This phase only records tokens, log probabilities, values, and outputs.",
+  },
+  {
+    step: "2. Reward",
+    action: "Extract the answer from <Judgement>...</Judgement> and compare it with the ground truth.",
+    updated: "Reward is computed, not learned. It is a scalar signal.",
+  },
+  {
+    step: "3. Advantage",
+    action: "Use the critic values and final reward to compute token-level advantages backward through the generated sequence.",
+    updated: "Advantage is computed, not learned. It tells PPO which token decisions were better or worse than expected.",
+  },
+  {
+    step: "4. PPO update",
+    action: "Recompute current log probabilities on the same sampled actions and compare them with old log probabilities from rollout.",
+    updated: "LoRA policy parameters are updated, but clipping limits the size of the change.",
+  },
+  {
+    step: "5. Critic update",
+    action: "Train the value head to better predict future reward from each token prefix.",
+    updated: "The critic/value parameters are updated with a TD-error style loss.",
+  },
+  {
+    step: "6. Repeat then resample",
+    action: "Use the sampled batch for several PPO epochs, then discard it and generate a new batch with the updated policy.",
+    updated: "In this paper, each sampled batch is used for 4 PPO epochs.",
+  },
+];
+
+const rewardRows = [
+  {
+    task: "Classification tasks",
+    reward: "R = 1 if the extracted answer matches the ground-truth label; otherwise R = 0.",
+    formatPenalty: "Malformed output receives -1, the largest penalty in the classification setting.",
+    intuition: "Wrong but parseable is bad; unparseable is worse because the RL environment cannot score it reliably.",
+  },
+  {
+    task: "STS-B regression",
+    reward: "R = 2.5 - |predicted score - true score|.",
+    formatPenalty: "Malformed output receives -2.5, the lowest possible reward for the regression setting.",
+    intuition: "The reward is highest when the predicted similarity score exactly matches the true score and decreases with absolute error.",
+  },
+  {
+    task: "SQuAD appendix",
+    reward: "Exact Match and F1 are used as reward signals.",
+    formatPenalty: "The paper focuses on EM/F1 scoring rather than the <Judgement> classification format.",
+    intuition: "If a task has an automatic metric, PPO can optimize the model toward that metric directly.",
+  },
+  {
+    task: "PPO-RM",
+    reward: "A learned BERT-based reward model scores generated judgments and analyses.",
+    formatPenalty: "The reward is no longer only a simple label-matching rule.",
+    intuition: "Richer rewards can improve explanation quality, but may trade off against classification accuracy.",
+  },
+];
+
+const mathRows = [
+  {
+    symbol: "s_t",
+    meaning: "The state at time t",
+    inLLM: "The prompt plus all tokens generated before time t.",
+  },
+  {
+    symbol: "a_t",
+    meaning: "The action at time t",
+    inLLM: "The next token generated by the LLM.",
+  },
+  {
+    symbol: "p_θ(a_t | s_t)",
+    meaning: "Current policy probability",
+    inLLM: "The updated model's probability of the sampled token in that prefix.",
+  },
+  {
+    symbol: "p_θ′(a_t | s_t)",
+    meaning: "Old policy probability",
+    inLLM: "The rollout model's probability of the same token when the response was generated.",
+  },
+  {
+    symbol: "r_t(θ)",
+    meaning: "Probability ratio",
+    inLLM: "How much the current model has changed its probability for the sampled token relative to the old policy.",
+  },
+  {
+    symbol: "Â_t",
+    meaning: "Advantage estimate",
+    inLLM: "Whether this token choice was better or worse than expected given the reward and critic values.",
+  },
+  {
+    symbol: "V_t",
+    meaning: "Value estimate",
+    inLLM: "The critic's estimate of expected future reward from the current token prefix.",
+  },
+];
+
+const glueRows = [
+  { method: "LLAMA2-7B zero-shot", score: "46.1", meaning: "Instruction prompts alone do not unlock strong GLUE performance." },
+  { method: "LLAMA2-7B few-shot", score: "58.7", meaning: "In-context examples help, but the model still trails BERT by a large margin." },
+  { method: "SFT-ST", score: "78.5", meaning: "Supervised LoRA fine-tuning nearly reaches BERT-base but remains below PPO." },
+  { method: "PPO-ST", score: "84.8", meaning: "Single-task PPO is the strongest GLUE setting in the paper." },
+  { method: "PPO-MT", score: "82.9", meaning: "Multi-task PPO is weaker than single-task PPO but still competitive with or above BERT-large." },
+  { method: "BERT-base / BERT-large", score: "79.6 / 82.1", meaning: "The encoder-only baselines remain crucial reference points for NLU." },
+];
+
+const experimentRows = [
+  {
+    experiment: "GLUE main benchmark",
+    question: "Does PPO improve standard NLU performance?",
+    result: "PPO-ST reaches 84.8 average, above SFT-ST, prompting baselines, BERT-base, and BERT-large.",
+  },
+  {
+    experiment: "SuperGLUE appendix",
+    question: "Does the method survive a harder benchmark?",
+    result: "PPO-ST reaches 78.3 average, above BERT-large, BERT-large++, zero-shot, and few-shot LLAMA2.",
+  },
+  {
+    experiment: "Cross-model check",
+    question: "Is the effect specific to LLAMA2?",
+    result: "PPO improves LLAMA2-7B, Qwen2.5-7B-Instruct, and MPT-7B-chat on STS-B/COPA-style tests.",
+  },
+  {
+    experiment: "PPO vs GRPO",
+    question: "Is PPO the only RL choice?",
+    result: "GRPO slightly beats PPO on average in the tested tasks, but has higher runtime because it samples multiple responses per prompt.",
+  },
+  {
+    experiment: "OOD generalization",
+    question: "Does task-specific PPO transfer?",
+    result: "SST-2-tuned models transfer to sentiment datasets; MNLI-tuned models transfer to NLI datasets, sometimes beating GPT-4o on these narrow evaluations.",
+  },
+  {
+    experiment: "Instruction following and perplexity",
+    question: "Does fine-tuning damage the base model?",
+    result: "PPO preserves instruction-following and WikiText-2 perplexity better than SFT in the paper's tests.",
+  },
+  {
+    experiment: "SQuAD",
+    question: "Can PPO optimize a reading-comprehension metric?",
+    result: "PPO improves over SFT when Exact Match and F1 are used as rewards.",
+  },
+  {
+    experiment: "Base vs chat model",
+    question: "Does the starting checkpoint matter?",
+    result: "PPO-tuned LLAMA2-7B-chat-hf averages higher than PPO-tuned LLAMA2-7B-base on GLUE.",
+  },
+];
+
+const grpoRows = [
+  { algorithm: "SFT", average: "76.9", runtime: "4.124s", interpretation: "Simple and cheaper, but lower NLU performance." },
+  { algorithm: "PPO", average: "84.6", runtime: "4.299s", interpretation: "Large improvement with modest per-step runtime increase." },
+  { algorithm: "GRPO", average: "84.9", runtime: "5.155s", interpretation: "Slightly higher score, but slower because it requires multiple sampled responses." },
+];
+
+const rewardModelRows = [
+  {
+    component: "Response generation",
+    detail: "For 5,000 SST-2 samples, LLAMA2-7B-chat-hf generates four responses per sample, each with a sentiment judgment and an analysis.",
+  },
+  {
+    component: "Ranking source",
+    detail: "GPT-4o ranks responses using label correctness, consistency between judgment and analysis, and factual/helpful analysis quality.",
+  },
+  {
+    component: "Ranking structure",
+    detail: "Correct answer with analysis is ranked above only correct answer, which is ranked above incorrect answer with analysis, which is ranked above only incorrect answer.",
+  },
+  {
+    component: "Reward model",
+    detail: "A BERT-base-cased model is trained with pairwise ranking loss so better responses receive higher scores than worse responses.",
+  },
+  {
+    component: "PPO-RM result",
+    detail: "Analysis quality improves, but SST-2 classification accuracy drops from 96.4 to 89.7.",
+  },
+];
+
+const appendixRows = [
+  { item: "PPO batch search", value: "Batch size is selected from 4, 8, 12, and 16 for each task." },
+  { item: "SFT batch size", value: "SFT uses batch size 24 across tasks." },
+  { item: "PPO epochs", value: "Each sampled batch is used for 4 PPO epochs before new rollout data is sampled." },
+  { item: "Learning rate", value: "Initial learning rate is 9 × 10^-6." },
+  { item: "Optimizers", value: "PPO uses Adafactor; SFT uses AdamW." },
+  { item: "Scheduler", value: "Cosine annealing with 10% warmup, decaying to one-tenth of the initial learning rate." },
+  { item: "LoRA rank", value: "The LoRA rank is r = 16." },
+  { item: "Evaluation generation", value: "Multinomial sampling with temperature 1; one response per data sample; response length 12–32 tokens." },
+  { item: "Few-shot sweep", value: "The number of demonstrations is swept from 1 to 5 on validation data." },
+];
+
+const takeawayRows = [
+  "Decoder-style LLMs can be strong generators while still underperforming encoder models on classic NLU tasks.",
+  "The paper's core move is to treat NLU adaptation as reinforcement learning over generated answers.",
+  "SFT imitates answer strings; PPO optimizes response-level reward.",
+  "PPO's old-policy ratio is local and dynamic; the reference model used for KL is a separate, usually fixed, global anchor.",
+  "The critic does not know the future during generation; it estimates values after rollout has produced the state sequence.",
+  "LoRA is not only cheaper than full fine-tuning; it also constrains where the model is allowed to adapt.",
+  "Reward design is the central bottleneck. Simple label matching works well for benchmarks, but richer tasks need better reward models.",
+];
+---
+
+<PaperLayout
+  title="Improving the Language Understanding Capabilities of Large Language Models Using Reinforcement Learning"
+  eyebrow="LLM · RL for NLU · 2025 / arXiv"
+  authors="Sai Ashish Somayajula · Bokai Hu · Qi Cao · Xin Pan · Pengtao Xie"
+  arxivUrl="https://arxiv.org/html/2410.11020v5"
+  subtitle="A structured reading of a paper that reframes natural language understanding as a reinforcement-learning problem for instruction-tuned LLMs."
+  sections={sections}
+  annotations={annotations}
+  initialAnnotation="nlu"
+  compactTitle={true}
+>
+        <section id="overview" class="reading-section">
+          <h2>Overview</h2>
+
+          <div class="guide-box">
+            <strong>Reading guide</strong>
+            <p>
+              Read this paper as a paper about <em>task alignment</em>, not as a paper about a new model architecture.
+              The authors do not invent a new Transformer. Instead, they ask whether an instruction-tuned LLM can be made better at
+              <button class="anno" data-anno="nlu">natural language understanding</button> by training it with
+              task rewards rather than only with supervised answer imitation.
+            </p>
+          </div>
+
+          <p>
+            The paper starts from a surprising observation: smaller encoder-only models such as BERT can still beat
+            7B-scale instruction-tuned LLMs on classic NLU benchmarks. A model like LLAMA2-7B-chat-hf can follow
+            instructions and generate fluent text, but when it is asked to solve GLUE or SuperGLUE tasks with only
+            prompting, it often produces unstable, biased, or poorly formatted answers.
+          </p>
+
+          <p>
+            The authors' solution is to turn NLU into a reinforcement-learning environment. The model receives a
+            prompt and generates an answer token by token. The generated answer is extracted from a fixed format,
+            compared with the ground-truth label, and converted into a scalar
+            <button class="anno" data-anno="reward">reward</button>. Then
+            <button class="anno" data-anno="ppo">PPO</button> updates the model so that answer paths receiving
+            higher reward become more likely.
+          </p>
+
+          <div class="architecture-flow history-flow">
+            <span>Prompt + query</span>
+            <span>→</span>
+            <span>LLM generates answer</span>
+            <span>→</span>
+            <span>Extract judgment</span>
+            <span>→</span>
+            <span>Reward</span>
+            <span>→</span>
+            <span>PPO updates LoRA</span>
+          </div>
+        </section>
+
+        <section id="problem" class="reading-section">
+          <h2>The problem</h2>
+
+          <p>
+            The paper is built around a distinction that is easy to miss: <strong>generation ability is not the same as
+            benchmarked understanding ability</strong>. Decoder-style LLMs are trained to continue text. GLUE and
+            SuperGLUE often ask for precise judgments: positive or negative, entailment or contradiction, acceptable
+            or unacceptable, similarity score, correct option, answer span.
+          </p>
+
+          <p>
+            A prompted LLM must solve these tasks indirectly through generation. It may answer in the wrong format,
+            over-explain instead of selecting a label, or show a class preference. Encoder-only models such as BERT
+            are structurally closer to the benchmark interface: encode the input, read a representation, output a label.
+          </p>
+
+          <div class="paper-passage">
+            <span class="passage-label">The paper's central gap</span>
+            <p>
+              Under-14B instruction-tuned LLMs have broad linguistic knowledge, but prompting does not reliably turn
+              that knowledge into stable NLU decisions. The authors argue that direct reward optimization can align
+              the model's generation behavior with the task metric more effectively than prompting or ordinary
+              supervised fine-tuning.
+            </p>
+          </div>
+
+          <p>
+            This is why the paper compares against both BERT and LLM baselines. BERT asks, "How strong is a model
+            designed for understanding?" <button class="anno" data-anno="zeroShot">Zero-shot prompting</button>
+            asks, "How far can the LLM get with only a task instruction?" <button class="anno" data-anno="fewShot">Few-shot prompting</button>
+            asks, "How far can the LLM get when a few labeled examples are placed inside the prompt, but no weights
+            are updated?" <button class="anno" data-anno="sft">SFT</button> asks, "Is ordinary supervised adaptation
+            enough?" PPO asks, "What if we optimize the final task reward directly?"
+          </p>
+        </section>
+
+        <section id="background" class="reading-section">
+          <h2>Background concepts</h2>
+
+          <p>
+            Before getting into PPO, it helps to separate two kinds of names that appear throughout the discussion:
+            benchmark names, which tell us what kind of understanding ability is being tested, and reinforcement-learning
+            terms, which tell us how the model is being updated.
+          </p>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Role</th>
+                  <th>What it is</th>
+                  <th>Why it matters here</th>
+                </tr>
+              </thead>
+              <tbody>
+                {benchmarkRows.map((row) => (
+                  <tr>
+                    <td>{row.name}</td>
+                    <td>{row.role}</td>
+                    <td>{row.what}</td>
+                    <td>{row.why}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p>
+            The most important reinforcement-learning translation is simple: an LLM can be treated as a
+            <button class="anno" data-anno="policy">policy</button>. In ordinary RL, a policy gives the probability of
+            taking an action in a state. In language generation, the state is the current token prefix, and the action
+            is the next token. PPO updates the model by changing how likely it is to generate certain tokens after
+            certain prefixes.
+          </p>
+
+          <div class="concept-grid">
+            <div class="concept-card">
+              <h3>Policy-based RL</h3>
+              <div class="formula-card emphasis-formula">
+                <code>
+                  p<sub>θ</sub>(a | s)
+                </code>
+              </div>
+              <p>
+                Policy-based methods directly optimize the action-selection rule above. This matches language models
+                naturally because a decoder-only LLM already outputs a probability distribution over the next token.
+              </p>
+            </div>
+
+            <div class="concept-card">
+              <h3>Value-based RL</h3>
+              <div class="formula-card emphasis-formula">
+                <code>
+                  Q(s, a)
+                </code>
+              </div>
+              <p>
+                Value-based methods learn a value function, then choose actions according to that value. This is less
+                convenient for LLM generation because the action space is the whole vocabulary, and one answer is a long
+                sequence of actions rather than a single decision.
+              </p>
+            </div>
+
+            <div class="concept-card">
+              <h3>Actor-critic</h3>
+              <div class="formula-card emphasis-formula">
+                <code>
+                  V<sub>t</sub> = V(s<sub>t</sub>)
+                </code>
+              </div>
+              <p>
+                The actor is the language model that generates tokens. The
+                <button class="anno" data-anno="critic">critic</button> estimates how much future reward is expected
+                from the current partial answer. That estimate helps PPO decide whether a generated token was better
+                or worse than expected.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section id="method" class="reading-section">
+          <h2>The method</h2>
+
+          <p>
+            The method has two parallel fine-tuning routes. In SFT, the training sequence contains the prompt, the
+            input, and the ground-truth answer. The model is trained by next-token prediction, so it learns to imitate
+            the correct answer text. In PPO, the model first generates an answer, then the environment scores that answer.
+            The model is updated according to the reward.
+          </p>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Setup</th>
+                  <th>Do weights change?</th>
+                  <th>Input form</th>
+                  <th>Purpose</th>
+                </tr>
+              </thead>
+              <tbody>
+                {promptingRows.map((row) => (
+                  <tr>
+                    <td>{row.setup}</td>
+                    <td>{row.weights}</td>
+                    <td>{row.input}</td>
+                    <td>{row.purpose}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p>
+            The prompt format matters because the reward function needs an answer it can parse. The paper asks the
+            model to place the final decision inside tags such as <code>&lt;Judgement&gt;...&lt;/Judgement&gt;</code>.
+            This turns an open-ended generation problem into a scorable answer-selection problem.
+          </p>
+
+          <div class="formula-card emphasis-formula">
+            <h3>Example: SST-2 as RL</h3>
+            <p><strong>Prompt:</strong> Determine whether the sentence is positive or negative. Return only the answer in <code>&lt;Judgement&gt;</code> tags.</p>
+            <p><strong>Query:</strong> <code>This movie is wonderful.</code></p>
+            <p><strong>Generated output:</strong> <code>&lt;Judgement&gt;Positive&lt;/Judgement&gt;</code></p>
+            <p><strong>Reward:</strong> If the ground-truth label is positive, the response receives high reward. If the model outputs negative, it receives lower reward. If it fails to produce a parseable judgment, it receives the format penalty.</p>
+          </div>
+        </section>
+
+        <section id="ppo" class="reading-section">
+          <h2>How PPO actually runs</h2>
+
+          <p>
+            PPO is easiest to understand if we separate two phases that are often mixed together in the formula:
+            <strong>rollout</strong> and <strong>update</strong>. During rollout, the current model generates answers and
+            records the tokens it sampled. During update, PPO reuses those recorded tokens to change the trainable parameters.
+            The new policy is not created before training starts; it is created by gradient updates on responses generated by
+            the previous policy.
+          </p>
+
+          <div class="paper-passage">
+            <span class="passage-label">The key mental model</span>
+            <p>
+              First, the model acts. Then the answer is scored. Then PPO asks: should the model become more or less likely
+              to generate the same tokens in the same states next time?
+            </p>
+          </div>
+
+          <h3>1. What is being compared?</h3>
+
+          <p>
+            There are three different model states that are easy to confuse. The current policy is the model being updated.
+            The old policy is the snapshot that generated the current rollout batch. The reference model is a longer-term
+            anchor used by the KL penalty, usually kept fixed.
+          </p>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Formula</th>
+                  <th>Does it change?</th>
+                  <th>What it is used for</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Current policy</td>
+                  <td>
+                    <code>
+                      π<sub>θ</sub>
+                    </code>
+                  </td>
+                  <td>Yes</td>
+                  <td>
+                    The policy currently being optimized. In this setup, the main trainable part is the LoRA-adapted policy,
+                    not all original LLM weights.
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <button class="anno" data-anno="oldPolicy">Old policy</button>
+                  </td>
+                  <td>
+                    <code>
+                      π<sub>θ′</sub>
+                    </code>
+                  </td>
+                  <td>Yes, after each rollout</td>
+                  <td>
+                    The snapshot that generated the current batch of responses. PPO compares the current policy against this
+                    snapshot so one update does not move too far.
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <button class="anno" data-anno="referenceModel">Reference model</button>
+                  </td>
+                  <td>
+                    <code>
+                      π<sub>ref</sub>
+                    </code>
+                  </td>
+                  <td>Usually fixed</td>
+                  <td>
+                    The longer-term anchor used by the KL penalty. It prevents the fine-tuned model from drifting too far from
+                    the original language model distribution.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p>
+            This means <code>θ′</code> is not simply the original model forever. It is a moving snapshot. If
+            <code>θ<sub>0</sub></code> generates the first rollout, then <code>θ′ = θ<sub>0</sub></code> for that update.
+            After PPO produces <code>θ<sub>1</sub></code>, the next rollout is generated by <code>θ<sub>1</sub></code>,
+            so the next old policy becomes <code>θ′ = θ<sub>1</sub></code>.
+          </p>
+
+          <div class="architecture-flow">
+            <span>
+              π<sub>θ₀</sub> generates batch
+            </span>
+            <span>→</span>
+            <span>
+              old policy is π<sub>θ₀</sub>
+            </span>
+            <span>→</span>
+            <span>PPO updates current policy</span>
+            <span>→</span>
+            <span>
+              π<sub>θ₁</sub>
+            </span>
+            <span>→</span>
+            <span>
+              next rollout uses π<sub>θ₁</sub>
+            </span>
+          </div>
+
+          <h3>2. Rollout: generate first, update later</h3>
+
+          <p>
+            During rollout, the model receives a task prompt and generates a response. For an NLU classification example,
+            the input might ask the model to place its answer inside a fixed tag:
+          </p>
+
+          <div class="paper-passage">
+            <span class="passage-label">Example rollout</span>
+            <p>
+              <strong>Input:</strong> Sentence: <em>This movie is wonderful.</em>
+              <br />
+              <strong>Prompt ending:</strong> <code>&lt;Judgement&gt;</code>
+              <br />
+              <strong>Generated output:</strong> <code>Positive &lt;/Judgement&gt;</code>
+              <br />
+              <strong>Full answer:</strong> <code>&lt;Judgement&gt;Positive&lt;/Judgement&gt;</code>
+            </p>
+          </div>
+
+          <p>
+            The rollout creates a trajectory. At each token position, the state is the current prefix and the action is the
+            next generated token.
+          </p>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Time step</th>
+                  <th>State</th>
+                  <th>Action</th>
+                  <th>Recorded during rollout</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <code>t = 1</code>
+                  </td>
+                  <td>
+                    <code>
+                      s<sub>1</sub> = prompt + &lt;Judgement&gt;
+                    </code>
+                  </td>
+                  <td>
+                    <code>
+                      a<sub>1</sub> = Positive
+                    </code>
+                  </td>
+                  <td>
+                    <code>
+                      log p<sub>θ′</sub>(a<sub>1</sub> | s<sub>1</sub>)
+                    </code>
+                    and
+                    <code>
+                      V(s<sub>1</sub>)
+                    </code>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <code>t = 2</code>
+                  </td>
+                  <td>
+                    <code>
+                      s<sub>2</sub> = prompt + &lt;Judgement&gt; Positive
+                    </code>
+                  </td>
+                  <td>
+                    <code>
+                      a<sub>2</sub> = &lt;/Judgement&gt;
+                    </code>
+                  </td>
+                  <td>
+                    <code>
+                      log p<sub>θ′</sub>(a<sub>2</sub> | s<sub>2</sub>)
+                    </code>
+                    and
+                    <code>
+                      V(s<sub>2</sub>)
+                    </code>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p>
+            Nothing has been updated yet. The rollout only records what the old policy did: which tokens it sampled, how
+            likely those tokens were under the old policy, and what value the critic assigned to each prefix.
+          </p>
+
+          <h3>3. Reward: score the completed answer</h3>
+
+          <p>
+            The reward comes after the full response has been generated. For classification tasks, the answer is extracted
+            from the judgement tag and compared with the ground-truth label.
+          </p>
+
+          <div class="concept-grid">
+            <div class="concept-card">
+              <h3>Correct format, correct answer</h3>
+              <div class="formula-card emphasis-formula">
+                <code>
+                  R = 1
+                </code>
+              </div>
+              <p>
+                The generated label matches the ground truth.
+              </p>
+            </div>
+
+            <div class="concept-card">
+              <h3>Correct format, wrong answer</h3>
+              <div class="formula-card emphasis-formula">
+                <code>
+                  R = 0
+                </code>
+              </div>
+              <p>
+                The model produced a parseable label, but the label is wrong.
+              </p>
+            </div>
+
+            <div class="concept-card">
+              <h3>Wrong format</h3>
+              <div class="formula-card emphasis-formula">
+                <code>
+                  R = −1
+                </code>
+              </div>
+              <p>
+                The output cannot be reliably parsed. This is the largest penalty for classification tasks.
+              </p>
+            </div>
+          </div>
+
+          <p>
+            For STS-B, the task is regression rather than classification, so the reward is based on distance from the true
+            similarity score:
+          </p>
+
+          <div class="formula-card emphasis-formula">
+            <code>
+              R = 2.5 − |ŷ<sub>i</sub> − y<sub>i</sub>|
+            </code>
+          </div>
+
+          <p>
+            Since STS-B scores are between 0 and 5, the largest possible error is 5. The reward therefore ranges from
+            <code>−2.5</code> to <code>2.5</code>. A formatting failure receives <code>−2.5</code>, the lowest possible reward.
+          </p>
+
+          <h3>4. Critic: estimate the value of each prefix</h3>
+
+          <p>
+            The <button class="anno" data-anno="critic">critic</button> does not predict the next token. It takes the hidden
+            representation of a generated prefix and outputs one scalar value. That value means: from this partial answer,
+            how much future reward should we expect?
+          </p>
+
+          <div class="formula-card emphasis-formula">
+            <code>
+              V<sub>t</sub> = V(s<sub>t</sub>)
+            </code>
+          </div>
+
+          <p>
+            A common confusion is how the critic can use <code>V<sub>t+1</sub></code> if the model is currently at time
+            <code>t</code>. The answer is that PPO computes these values after rollout. Once the full response has been
+            generated, the sequence of prefixes already exists:
+          </p>
+
+          <div class="formula-card emphasis-formula">
+            <code>
+              s<sub>1</sub>, s<sub>2</sub>, ..., s<sub>T</sub>
+            </code>
+          </div>
+
+          <p>
+            So <code>V<sub>t+1</sub></code> is not a magical look into the future. It is the critic's value estimate for the
+            next prefix that already appeared in the sampled trajectory.
+          </p>
+
+          <div class="paper-passage">
+            <span class="passage-label">Example</span>
+            <p>
+              If <code>s<sub>t</sub> = prompt + &lt;Judgement&gt;</code>, the critic might estimate
+              <code>V(s<sub>t</sub>) = 0.35</code>. If the next generated token is <code>Positive</code>, then
+              <code>s<sub>t+1</sub> = prompt + &lt;Judgement&gt; Positive</code>, and the critic might estimate
+              <code>V(s<sub>t+1</sub>) = 0.80</code>. That means the prefix containing <code>Positive</code> looks more likely
+              to lead to a high reward.
+            </p>
+          </div>
+
+          <h3>5. Advantage: assign credit backward</h3>
+
+          <p>
+            The reward usually arrives only after the full answer is finished. PPO still needs to know whether each earlier
+            token helped or hurt. That is the role of the advantage estimate.
+          </p>
+
+          <div class="formula-card emphasis-formula">
+            <code>
+              δ<sub>t</sub> = R<sub>t</sub> + γV<sub>t+1</sub> − V<sub>t</sub>
+            </code>
+          </div>
+
+          <p>
+            This is the temporal-difference error. It compares what the critic expected at the current state with what actually
+            happened after taking the action and moving to the next state.
+          </p>
+
+          <div class="formula-card emphasis-formula">
+            <code>
+              Â<sub>t</sub> = δ<sub>t</sub> + γλÂ<sub>t+1</sub>
+            </code>
+          </div>
+
+          <p>
+            This is Generalized Advantage Estimation. It is computed backward from the end of the generated response:
+          </p>
+
+          <div class="paper-passage">
+            <span class="passage-label">Backward computation</span>
+            <p>
+              Start with <code>Â<sub>T+1</sub> = 0</code>. Compute <code>Â<sub>T</sub></code>, then
+              <code>Â<sub>T−1</sub></code>, then <code>Â<sub>T−2</sub></code>, and continue until
+              <code>Â<sub>1</sub></code>. This is why the formula can depend on <code>Â<sub>t+1</sub></code> without causing
+              a circular dependency.
+            </p>
+          </div>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Term</th>
+                  <th>Meaning</th>
+                  <th>Intuition</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <code>
+                      R<sub>t</sub>
+                    </code>
+                  </td>
+                  <td>Immediate reward</td>
+                  <td>
+                    Often zero for intermediate tokens and nonzero at the end of the response.
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <code>
+                      γ
+                    </code>
+                  </td>
+                  <td>Discount factor</td>
+                  <td>
+                    Controls how much future value matters compared with immediate reward.
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <code>
+                      λ
+                    </code>
+                  </td>
+                  <td>GAE smoothing parameter</td>
+                  <td>
+                    Controls the trade-off between short-term TD estimates and longer-range credit assignment.
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <code>
+                      V<sub>t</sub>
+                    </code>
+                  </td>
+                  <td>Critic estimate at the current prefix</td>
+                  <td>
+                    What the critic expected before seeing the next token.
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <code>
+                      V<sub>t+1</sub>
+                    </code>
+                  </td>
+                  <td>Critic estimate at the next prefix</td>
+                  <td>
+                    What the critic expects after the sampled token has been appended.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>6. PPO update: change token probabilities carefully</h3>
+
+          <p>
+            Once advantages are computed, PPO updates the policy. It takes the same sampled state-action pairs from rollout
+            and compares the current probability of each sampled token with the probability assigned by the old policy.
+          </p>
+
+          <div class="formula-card emphasis-formula">
+            <code>
+              r<sub>t</sub>(θ) =
+              p<sub>θ</sub>(a<sub>t</sub> | s<sub>t</sub>)
+              /
+              p<sub>θ′</sub>(a<sub>t</sub> | s<sub>t</sub>)
+            </code>
+          </div>
+
+          <p>
+            At the beginning of the update, <code>θ</code> and <code>θ′</code> are the same, so the ratio is close to
+            <code>1</code>. As gradient updates change <code>θ</code>, the numerator changes, but the denominator stays fixed
+            because it was recorded during rollout.
+          </p>
+
+          <div class="formula-card emphasis-formula">
+            <code>
+              J(θ) = E[min(r<sub>t</sub>(θ)Â<sub>t</sub>,
+              clip(r<sub>t</sub>(θ), 1−ε, 1+ε)Â<sub>t</sub>)]
+            </code>
+          </div>
+
+          <p>
+            If <code>Â<sub>t</sub> &gt; 0</code>, the sampled token was better than expected, so PPO tries to increase its
+            probability. If <code>Â<sub>t</sub> &lt; 0</code>, the token was worse than expected, so PPO tries to decrease its
+            probability. The clipping term prevents either change from becoming too large in one update.
+          </p>
+
+          <div class="concept-grid">
+            <div class="concept-card">
+              <h3>Positive advantage</h3>
+              <div class="formula-card emphasis-formula">
+                <code>
+                  Â<sub>t</sub> &gt; 0
+                </code>
+              </div>
+              <p>
+                Increase the probability of the sampled token, but only within the clipped trust range.
+              </p>
+            </div>
+
+            <div class="concept-card">
+              <h3>Negative advantage</h3>
+              <div class="formula-card emphasis-formula">
+                <code>
+                  Â<sub>t</sub> &lt; 0
+                </code>
+              </div>
+              <p>
+                Decrease the probability of the sampled token, again without letting the policy move too far.
+              </p>
+            </div>
+
+            <div class="concept-card">
+              <h3>KL penalty</h3>
+              <div class="formula-card emphasis-formula">
+                <code>
+                  KL(π<sub>θ</sub> || π<sub>ref</sub>)
+                </code>
+              </div>
+              <p>
+                Keeps the updated policy close to the original reference model, preserving general language behavior.
+              </p>
+            </div>
+          </div>
+
+          <h3>7. Critic update: make value estimates less wrong</h3>
+
+          <p>
+            The critic is trained with a value loss. Its target is not the label itself; its target is a better prediction of
+            expected future reward.
+          </p>
+
+          <div class="formula-card emphasis-formula">
+            <code>
+              L<sub>value</sub> = (R<sub>t</sub> + γV<sub>t+1</sub> − V<sub>t</sub>)<sup>2</sup>
+            </code>
+          </div>
+
+          <p>
+            If the critic underestimates a prefix that later leads to a correct answer, this loss pushes its value upward.
+            If it overestimates a prefix that leads to a wrong or malformed answer, the loss pushes its value downward.
+          </p>
+
+          <h3>8. One complete PPO iteration</h3>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Stage</th>
+                  <th>What happens</th>
+                  <th>What changes?</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Prepare</td>
+                  <td>
+                    Start from the current policy <code>π<sub>θk</sub></code>, a critic/value head, and a usually fixed
+                    reference model <code>π<sub>ref</sub></code>.
+                  </td>
+                  <td>Nothing yet.</td>
+                </tr>
+                <tr>
+                  <td>Rollout</td>
+                  <td>
+                    Generate responses using <code>π<sub>θk</sub></code>. Record sampled tokens, old log-probabilities, and
+                    value estimates.
+                  </td>
+                  <td>Nothing yet.</td>
+                </tr>
+                <tr>
+                  <td>Reward</td>
+                  <td>
+                    Extract the final answer and compare it with the ground-truth label or score.
+                  </td>
+                  <td>Reward is computed, but no model parameter changes.</td>
+                </tr>
+                <tr>
+                  <td>Advantage</td>
+                  <td>
+                    Use critic values and rewards to compute <code>Â<sub>t</sub></code> backward through the response.
+                  </td>
+                  <td>Advantages are computed, but no model parameter changes.</td>
+                </tr>
+                <tr>
+                  <td>Policy update</td>
+                  <td>
+                    Recompute current log-probabilities, form the ratio against old log-probabilities, and apply the clipped
+                    PPO objective.
+                  </td>
+                  <td>LoRA policy parameters update.</td>
+                </tr>
+                <tr>
+                  <td>Critic update</td>
+                  <td>
+                    Minimize the value loss so the critic becomes better at predicting future reward from a prefix.
+                  </td>
+                  <td>Value head / critic parameters update.</td>
+                </tr>
+                <tr>
+                  <td>Repeat PPO epochs</td>
+                  <td>
+                    Reuse the same rollout batch for several PPO epochs. In this setup, each sampled batch is used for four
+                    PPO epochs.
+                  </td>
+                  <td>
+                    The current policy keeps changing, while the old log-probabilities from rollout stay fixed.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Next iteration</td>
+                  <td>
+                    Discard the old rollout batch. Generate a new batch with the updated policy.
+                  </td>
+                  <td>
+                    <code>π<sub>θ(k+1)</sub></code> becomes the policy for the next rollout.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="paper-passage">
+            <span class="passage-label">A concrete failure-to-success update</span>
+            <p>
+              Suppose the current model sees <em>This movie is wonderful</em> and generates
+              <code>&lt;Judgement&gt;Negative&lt;/Judgement&gt;</code>. The extracted answer is wrong, so the reward is low.
+              Tokens leading to <code>Negative</code> receive negative advantage, and PPO lowers their probability in similar
+              states. If a later rollout generates <code>&lt;Judgement&gt;Positive&lt;/Judgement&gt;</code>, the reward is high,
+              the relevant tokens receive positive advantage, and PPO raises their probability. Clipping prevents either
+              update from turning into a large, unstable jump.
+            </p>
+          </div>
+        </section>
+
+        <section id="rewards" class="reading-section">
+          <h2>Reward design</h2>
+
+          <p>
+            The main paper intentionally uses simple rewards. This is part of the argument: even a basic task-correctness
+            signal can turn a weak prompting model into a much stronger NLU model. But reward design is also the biggest
+            limitation of the approach.
+          </p>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Task type</th>
+                  <th>Reward</th>
+                  <th>Format penalty</th>
+                  <th>Intuition</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rewardRows.map((row) => (
+                  <tr>
+                    <td>{row.task}</td>
+                    <td>{row.reward}</td>
+                    <td>{row.formatPenalty}</td>
+                    <td>{row.intuition}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p>
+            For classification, the malformed-output penalty of <code>-1</code> is the strongest penalty in that reward
+            scheme. A wrong but parseable answer receives <code>0</code>; an unparseable answer receives <code>-1</code>.
+            This does not mean the paper uses a simple supervised loss equal to negative reward. PPO maximizes a clipped
+            policy objective. The negative reward affects the advantage estimate, which pushes the model away from the
+            token sequence that produced the malformed output.
+          </p>
+
+          <p>
+            For <button class="anno" data-anno="stsb">STS-B</button>, the answer is a number from 0 to 5, so the paper
+            defines reward as <code>2.5 - |ŷ - y|</code>. A perfect prediction receives <code>2.5</code>, the worst possible
+            error receives <code>-2.5</code>, and malformed output receives the same lowest reward. This keeps the reward
+            centered and gives PPO a graded signal rather than a binary correct/incorrect signal.
+          </p>
+        </section>
+
+        <section id="lora" class="reading-section">
+          <h2>Why LoRA</h2>
+
+          <p>
+            The paper uses <button class="anno" data-anno="lora">LoRA</button> for both SFT and PPO. The obvious reason
+            is computational: full fine-tuning a 7B model is expensive, and PPO is already heavier than SFT because it
+            requires generation, reward computation, advantage estimation, and policy updates.
+          </p>
+
+          <p>
+            But LoRA also fits the paper's conceptual goal. The authors are not trying to overwrite the model's language
+            knowledge. They assume the pretrained LLM already contains useful syntax, semantics, and world knowledge.
+            The adaptation problem is to steer output behavior toward NLU labels. Freezing the backbone and training
+            low-rank updates lets the model move in a smaller parameter subspace.
+          </p>
+
+          <div class="architecture-flow">
+            <span>Frozen LLAMA2 backbone</span>
+            <span>+</span>
+            <span>Trainable low-rank LoRA updates</span>
+            <span>→</span>
+            <span>Task-adapted generation policy</span>
+          </div>
+
+          <p>
+            This is also why LoRA is more natural here than simply adding a classification head. The paper wants the
+            LLM to keep answering through generation, because PPO treats the generated tokens as actions. A separate
+            classification head would change the interface into a discriminative classifier. LoRA changes the generation
+            distribution while preserving the model's normal prompting interface.
+          </p>
+        </section>
+
+        <section id="experiments" class="reading-section">
+          <h2>Experiment design</h2>
+
+          <p>
+            The experiments are strong because they answer several different questions, not just one. The main table
+            asks whether PPO beats standard NLU baselines. Other experiments ask whether the effect generalizes, whether
+            another RL algorithm behaves similarly, whether the model keeps its original abilities, and whether richer
+            rewards change the trade-off.
+          </p>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Experiment</th>
+                  <th>Question</th>
+                  <th>Result / role in the argument</th>
+                </tr>
+              </thead>
+              <tbody>
+                {experimentRows.map((row) => (
+                  <tr>
+                    <td>{row.experiment}</td>
+                    <td>{row.question}</td>
+                    <td>{row.result}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p>
+            The difference between <strong>single-task</strong> and <strong>multi-task</strong> training is also important.
+            In single-task training, each GLUE or SuperGLUE subtask gets its own LoRA module. In multi-task training,
+            several datasets are mixed and one LoRA module is trained to handle them together. Single-task PPO is usually
+            strongest, but multi-task PPO shows that the method is not only a collection of one-off task adapters.
+          </p>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Appendix / setup detail</th>
+                  <th>Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                {appendixRows.map((row) => (
+                  <tr>
+                    <td>{row.item}</td>
+                    <td>{row.value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="results" class="reading-section">
+          <h2>Main results</h2>
+
+          <p>
+            On GLUE, the paper's headline result is that PPO turns LLAMA2-7B-chat-hf from a weak prompted NLU model
+            into a model that beats strong encoder-only baselines on average. The important comparison is not only
+            PPO vs prompting, but PPO vs SFT.
+          </p>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Method</th>
+                  <th>GLUE average</th>
+                  <th>What it means</th>
+                </tr>
+              </thead>
+              <tbody>
+                {glueRows.map((row) => (
+                  <tr>
+                    <td>{row.method}</td>
+                    <td>{row.score}</td>
+                    <td>{row.meaning}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p>
+            The SuperGLUE strengthens the same conclusion on a harder benchmark. PPO-ST reaches an average
+            of 78.3, while BERT-large and BERT-large++ are lower. This matters because SuperGLUE contains more tasks
+            where shallow label matching should not be enough: reading, coreference, commonsense, word-sense, and
+            multi-sentence reasoning.
+          </p>
+
+          <p>
+            The paper also compares <button class="anno" data-anno="ppo">PPO</button> with
+            <button class="anno" data-anno="grpo">GRPO</button>. GRPO slightly improves the average score in the small
+            comparison table, but it is slower because it samples multiple responses per prompt. PPO remains attractive
+            because it gives a large gain over SFT with only a modest per-step runtime increase in the authors' setup.
+          </p>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Algorithm</th>
+                  <th>Average</th>
+                  <th>Per-step runtime</th>
+                  <th>Interpretation</th>
+                </tr>
+              </thead>
+              <tbody>
+                {grpoRows.map((row) => (
+                  <tr>
+                    <td>{row.algorithm}</td>
+                    <td>{row.average}</td>
+                    <td>{row.runtime}</td>
+                    <td>{row.interpretation}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p>
+            The out-of-domain evaluations should be read carefully. PPO-tuned LLAMA2 models outperform GPT-4o on
+            average across the selected sentiment and NLI datasets, including datasets such as
+            <button class="anno" data-anno="financialPhrasebank">Financial PhraseBank</button>,
+            <button class="anno" data-anno="mentalHealth">Mental Health</button>,
+            <button class="anno" data-anno="emotion">Emotion</button>,
+            <button class="anno" data-anno="babi">Babi-NLI</button>, and
+            <button class="anno" data-anno="siga">SIGA-NLI</button>. This does not mean LLAMA2 becomes generally
+            stronger than GPT-4o. It means a smaller model, specifically fine-tuned with a relevant task reward, can
+            beat a much larger general model on narrow classification-style evaluations.
+          </p>
+        </section>
+
+        <section id="reward-model" class="reading-section">
+          <h2>Reward model experiment</h2>
+
+          <p>
+            This experiment asks what happens when the reward is no longer just exact label matching. The main PPO setup
+            rewards the final label: correct, wrong, or malformed. That works well for benchmark classification, but many
+            language-understanding tasks also care about explanation quality, consistency, factuality, and helpfulness.
+            A <button class="anno" data-anno="rewardModel">reward model</button> is one way to turn those softer qualities
+            into a scalar reward that PPO can optimize.
+          </p>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Component</th>
+                  <th>What happens</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rewardModelRows.map((row) => (
+                  <tr>
+                    <td>{row.component}</td>
+                    <td>{row.detail}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <h3>From label reward to learned reward</h3>
+
+          <p>
+            In the simple reward setup, PPO only needs to check whether the extracted label matches the ground truth.
+            The reward is direct and task-specific:
+          </p>
+
+          <div class="formula-card emphasis-formula">
+            <code>
+              R = 1(ŷ = y)
+            </code>
+          </div>
+
+          <p>
+            The reward-model setup changes the source of the reward. The LLM generates both a sentiment judgement and an
+            analysis. Instead of assigning reward only by exact label match, a separate model scores the whole response:
+          </p>
+
+          <div class="formula-card emphasis-formula">
+            <code>
+              r<sub>θ</sub>(x, y)
+            </code>
+          </div>
+
+          <p>
+            Here, <code>x</code> is the input example, <code>y</code> is the generated response, and
+            <code>r<sub>θ</sub>(x, y)</code> is the reward model's scalar score for that response. PPO can then use this score
+            as the reward signal.
+          </p>
+
+          <h3>How the reward model learns preferences</h3>
+
+          <p>
+            The reward model is trained with pairwise ranking. For the same input, a better response should receive a higher
+            score than a worse response. The training data therefore contains pairs:
+          </p>
+
+          <div class="formula-card emphasis-formula">
+            <code>
+              (x, y<sub>w</sub>, y<sub>l</sub>)
+            </code>
+          </div>
+
+          <p>
+            <code>y<sub>w</sub></code> is the winner, or the higher-ranked response. <code>y<sub>l</sub></code> is the loser,
+            or the lower-ranked response. The desired inequality is:
+          </p>
+
+          <div class="formula-card emphasis-formula">
+            <code>
+              r<sub>θ</sub>(x, y<sub>w</sub>) &gt; r<sub>θ</sub>(x, y<sub>l</sub>)
+            </code>
+          </div>
+
+          <p>
+            The loss turns that preference into a differentiable objective:
+          </p>
+
+          <div class="formula-card emphasis-formula">
+            <code>
+              L(θ) = −E<sub>(x,y<sub>w</sub>,y<sub>l</sub>)∼D</sub>
+              [log σ(r<sub>θ</sub>(x,y<sub>w</sub>) − r<sub>θ</sub>(x,y<sub>l</sub>))]
+            </code>
+          </div>
+
+          <p>
+            The inside of the sigmoid is the score gap between the preferred and less preferred response:
+          </p>
+
+          <div class="formula-card emphasis-formula">
+            <code>
+              Δr = r<sub>θ</sub>(x,y<sub>w</sub>) − r<sub>θ</sub>(x,y<sub>l</sub>)
+            </code>
+          </div>
+
+          <p>
+            If the reward model already gives the better response a much higher score, <code>Δr</code> is large,
+            <code>σ(Δr)</code> is close to <code>1</code>, and the loss is small. If the worse response receives a higher
+            score, <code>Δr</code> becomes negative, <code>σ(Δr)</code> becomes small, and the loss becomes large. Training
+            therefore pushes the reward model to rank better answers above worse ones.
+          </p>
+
+          <div class="paper-passage">
+            <span class="passage-label">What counts as better?</span>
+            <p>
+              Responses are ranked not only by whether the sentiment label is correct, but also by whether the explanation is
+              consistent with the label, factually reasonable, and helpful. The intended preference order is:
+              <code>correct answer with analysis</code> &gt; <code>only correct answer</code> &gt;
+              <code>incorrect answer with analysis</code> &gt; <code>only incorrect answer</code>.
+            </p>
+          </div>
+
+          <h3>How it changes PPO</h3>
+
+          <p>
+            With exact label matching, PPO receives a simple task reward. With the learned reward model, PPO receives a score
+            from <code>r<sub>θ</sub>(x, y)</code>. The rest of the PPO machinery is the same: the generated response receives
+            a reward, advantages are computed, and the policy is updated to make high-reward responses more likely.
+          </p>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Reward source</th>
+                  <th>What PPO is pushed toward</th>
+                  <th>Main trade-off</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Exact label reward</td>
+                  <td>Output the correct class label in the required format.</td>
+                  <td>Strong classification accuracy, but little pressure to improve explanation quality.</td>
+                </tr>
+                <tr>
+                  <td>Learned reward model</td>
+                  <td>Output a response that looks better under the learned preference scorer.</td>
+                  <td>Better analyses, but the reward may become less directly aligned with classification accuracy.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Why the result matters</h3>
+
+          <p>
+            The result is a useful warning. PPO-RM improves generated analysis quality, but reduces SST-2 accuracy. That does
+            not mean PPO itself failed. It means the reward changed the target. Exact label reward asks the model to be sharp
+            at classification. A learned reward model asks for a broader behavior: correct judgement, coherent explanation,
+            factuality, and helpfulness.
+          </p>
+
+          <div class="paper-passage">
+            <span class="passage-label">The lesson</span>
+            <p>
+              PPO is an optimizer; the reward is the specification. If the reward model is trained on limited data, or if the
+              policy finds ways to satisfy the reward model without improving the underlying task, the model can trade away
+              accuracy for outputs that look better to the scorer.
+            </p>
+          </div>
+
+          <p>
+            This is why reward design is not a side detail. For simple NLU benchmarks, exact label matching is direct and
+            reliable. For richer language-understanding tasks, the reward must represent a more complex target, and that
+            target must be learned carefully enough that PPO does not optimize the wrong behavior.
+          </p>
+        </section>
+
+        <section id="limitations" class="reading-section">
+          <h2>Limitations</h2>
+
+          <p>
+            The main limitation is that the paper's strongest results still rely on ground-truth labels. Even though the
+            training is framed as reinforcement learning, the reward often comes from exact comparison with the labeled
+            answer. That is different from SFT, but it is not fully annotation-free.
+          </p>
+
+          <p>
+            The second limitation is that simple rewards fit structured benchmarks better than open-ended understanding.
+            GLUE and SuperGLUE are good for this paper because many tasks have clear labels or automatic metrics. Real
+            language understanding may involve ambiguous answers, long reasoning, factual support, or multiple valid
+            explanations. These cases need more robust reward models.
+          </p>
+
+          <p>
+            The third limitation is output format dependence. The model is rewarded after its answer is extracted from a
+            fixed structure. That is practical and necessary for automatic scoring, but it means the method depends on a
+            reliable interface between free-form generation and discrete task evaluation.
+          </p>
+
+          <p>
+            The paper's own conclusion is therefore balanced: PPO is a promising way to adapt already pretrained LLMs to
+            NLU tasks, but the long-term research problem is not simply "use PPO." It is how to define environments and
+            rewards that are reliable, generalizable, and resistant to reward hacking.
+          </p>
+        </section>
+
+        <section
+          id="experiment-design"
+          class="reading-section"
+          style="border-left: 4px solid var(--accent, #3b82f6); padding-left: 1.25rem;"
+        >
+          <h2>How to design convincing experiments</h2>
+
+          <p>
+            A strong empirical paper is not just a proposed method followed by a few scores. The experiments have to build a
+            chain of evidence. They should prove the main claim, compare against fair alternatives, explain why the method works,
+            test whether the gain generalizes, report the cost, and show the boundary cases. This is why the experimental section
+            here feels unusually complete: it does not only say that PPO wins on one benchmark; it tests the claim from several
+            angles.
+          </p>
+
+          <div class="paper-passage">
+            <span class="passage-label">The core idea</span>
+            <p>
+              A good experiment section should make a skeptical reader think: the method beats reasonable alternatives, the
+              improvement is not accidental, the cost is understandable, and the limitations are visible.
+            </p>
+          </div>
+
+          <div class="results-table-wrap">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Evidence needed</th>
+                  <th>Question to answer</th>
+                  <th>How this study answers it</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Main result</td>
+                  <td>
+                    Does the method directly support the central claim?
+                  </td>
+                  <td>
+                    GLUE is used as the main benchmark because the claim is about improving NLU. PPO is compared against
+                    prompting, SFT, and BERT-style encoder models on standard NLU tasks.
+                  </td>
+                </tr>
+
+                <tr>
+                  <td>Fair baselines</td>
+                  <td>
+                    Is the method compared against alternatives that a reader would actually consider?
+                  </td>
+                  <td>
+                    The baselines include zero-shot prompting, few-shot prompting, SFT, BERT-base, and BERT-large. This makes
+                    the comparison stronger than only showing that PPO beats a weak prompt.
+                  </td>
+                </tr>
+
+                <tr>
+                  <td>Mechanism</td>
+                  <td>
+                    Why does the method help?
+                  </td>
+                  <td>
+                    PPO is compared with SFT to test whether reward-driven optimization adds something beyond supervised
+                    next-token training. PPO is also compared with GRPO to ask whether the gain is specific to PPO or more
+                    broadly related to RL-style optimization.
+                  </td>
+                </tr>
+
+                <tr>
+                  <td>Stress test</td>
+                  <td>
+                    Does the method still work when the benchmark is harder?
+                  </td>
+                  <td>
+                    SuperGLUE is used as a harder NLU benchmark. This checks whether the result is more than a GLUE-specific
+                    improvement.
+                  </td>
+                </tr>
+
+                <tr>
+                  <td>Cross-model evidence</td>
+                  <td>
+                    Is the method tied to one model family?
+                  </td>
+                  <td>
+                    The experiments include LLAMA2, Qwen2.5, and MPT. This makes the argument less dependent on one particular
+                    checkpoint.
+                  </td>
+                </tr>
+
+                <tr>
+                  <td>Generalization</td>
+                  <td>
+                    Does the model only learn the training dataset, or does the behavior transfer?
+                  </td>
+                  <td>
+                    Models fine-tuned on SST-2 are tested on other sentiment datasets, and models fine-tuned on MNLI are tested
+                    on other NLI datasets. This checks whether the learned behavior survives outside the original training task.
+                  </td>
+                </tr>
+
+                <tr>
+                  <td>Cost</td>
+                  <td>
+                    What is the practical price of the improvement?
+                  </td>
+                  <td>
+                    LoRA reduces trainable parameters. PPO and GRPO are compared by runtime, and the study also notes that
+                    LLAMA-style inference is much slower than BERT-style inference.
+                  </td>
+                </tr>
+
+                <tr>
+                  <td>Side effects</td>
+                  <td>
+                    Does fine-tuning damage other useful abilities?
+                  </td>
+                  <td>
+                    Instruction-following is tested with an out-of-distribution Amazon review task, and language modeling
+                    ability is checked with WikiText-2 perplexity.
+                  </td>
+                </tr>
+
+                <tr>
+                  <td>Failure or trade-off</td>
+                  <td>
+                    Where does the method become less straightforward?
+                  </td>
+                  <td>
+                    The reward model experiment improves generated analysis quality but lowers SST-2 accuracy. This shows that
+                    richer rewards can change the target and introduce trade-offs.
+                  </td>
+                </tr>
+
+                <tr>
+                  <td>Extension</td>
+                  <td>
+                    Can the same idea apply beyond classification?
+                  </td>
+                  <td>
+                    The SQuAD experiment uses Exact Match and F1 as reward signals, showing how PPO can be extended to reading
+                    comprehension.
+                  </td>
+                </tr>
+
+                <tr>
+                  <td>Starting point</td>
+                  <td>
+                    Does the initialization matter?
+                  </td>
+                  <td>
+                    The comparison between LLaMA2-base and LLaMA2-chat shows that an instruction-tuned starting point is more
+                    suitable for this kind of task-specific RL adaptation.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p>
+            This is the difference between a narrow benchmark win and a convincing empirical argument. A narrow version would
+            simply say: <em>PPO improves GLUE.</em> A stronger version says: PPO improves the main benchmark, remains competitive
+            on a harder benchmark, works across several model families, transfers to related datasets, has measurable cost, keeps
+            more of the original model's behavior than SFT, and reveals an important trade-off when the reward becomes more
+            complex.
+          </p>
+
+          <div class="paper-passage">
+            <span class="passage-label">A reusable checklist</span>
+            <p>
+              When reading or designing a method paper, ask: What is the main claim? Are the baselines fair? What explains the
+              gain? Where else does it work? What does it cost? What abilities might it damage? Where does it fail or trade off?
+              If the experiments answer these questions, the paper is no longer just reporting numbers; it is making a case.
+            </p>
+          </div>
+        </section>
+
+        <section id="takeaways" class="reading-section final-takeaways">
+          <h2>Takeaways</h2>
+
+          <ol>
+            {takeawayRows.map((item) => (
+              <li>{item}</li>
+            ))}
+          </ol>
+        </section>
+</PaperLayout>
