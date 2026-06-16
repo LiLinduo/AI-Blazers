@@ -540,7 +540,7 @@ export const papers: Paper[] = [
     subtopic: "RL / Reasoning",
     year: 2025,
     title: "DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning",
-    status: "soon",
+    status: "ready",
   },
   {
     id: "deepseek-prover-v2-2025",
