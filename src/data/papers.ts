@@ -48,7 +48,7 @@ export const papers: Paper[] = [
     subtopic: "GPT-1",
     year: 2018,
     title: "Improving Language Understanding by Generative Pre-Training",
-    status: "soon",
+    status: "ready",
   },
   {
     id: "scaling-laws-2020",

@@ -1,0 +1,1664 @@
+---
+import PaperLayout from "../../components/paper/PaperLayout.astro";
+
+const annotations = {
+  nlu: {
+    type: "Task Family",
+    title: "Natural Language Understanding",
+    body:
+      "Natural Language Understanding tasks ask a model to classify, compare, infer, or answer questions about text. Examples include sentiment classification, textual entailment, paraphrase detection, semantic similarity, grammatical acceptability, and reading comprehension.",
+    why:
+      "GPT-1 is important because it shows that a generatively pretrained language model can be adapted to many NLU tasks with minimal architectural changes.",
+    related: ["GLUE", "RACE", "MultiNLI"],
+  },
+  semiSupervised: {
+    type: "Learning Paradigm",
+    title: "Semi-supervised learning",
+    body:
+      "Semi-supervised learning uses both unlabeled data and labeled data. In this paper, unlabeled books are used for language-model pretraining, and labeled benchmark datasets are used for supervised fine-tuning.",
+    why:
+      "The paper is motivated by the fact that unlabeled text is abundant while task-specific labels are expensive and scarce.",
+    related: ["Unsupervised pretraining", "Fine-tuning"],
+  },
+  unsupervisedPretraining: {
+    type: "Training Stage",
+    title: "Unsupervised pre-training",
+    body:
+      "Unsupervised pretraining first trains a model on a general objective without task labels. Here the objective is language modeling: predict the next token from previous tokens.",
+    why:
+      "It gives the Transformer a strong initialization containing syntax, semantics, long-range dependencies, and some world knowledge before any benchmark labels are used.",
+    related: ["Language modeling", "Initialization", "Representation learning"],
+  },
+  generativePretraining: {
+    type: "Core Idea",
+    title: "Generative pre-training",
+    body:
+      "Generative pretraining trains a model to model text as a sequence, usually by predicting the next token. The model learns by asking: what token should come next?",
+    why:
+      "GPT-1 argues that this seemingly simple generation objective can learn useful features for discriminative understanding tasks.",
+    related: ["Decoder-only", "Autoregressive LM", "Next-token prediction"],
+  },
+  discriminativeFineTuning: {
+    type: "Training Stage",
+    title: "Discriminative fine-tuning",
+    body:
+      "Discriminative fine-tuning adapts the pretrained model to a labeled target task, such as choosing an entailment label or selecting the correct answer option.",
+    why:
+      "The paper bridges generation and understanding: pretraining is generative, but downstream tasks are mostly discriminative.",
+    related: [ "Task labels", "Transfer learning"],
+  },
+  decoderOnly: {
+    type: "Architecture Choice",
+    title: "Decoder-only Transformer",
+    body:
+      "A decoder-only Transformer is a stack of causal self-attention blocks. Each position can attend only to earlier positions, so it is naturally suited to next-token prediction.",
+    why:
+      "GPT-1 does not need an encoder because its pretraining objective is autoregressive language modeling. During fine-tuning, the full task input is placed before a final extraction position.",
+    related: ["Causal mask", "Autoregressive"],
+  },
+  causalMask: {
+    type: "Attention Mechanism",
+    title: "Causal mask / masked self-attention",
+    body:
+      "A causal mask prevents a token position from seeing future tokens. When predicting token i, the model can use only tokens before i.",
+    why:
+      "This keeps language-model pretraining honest: the model must predict the future from the past rather than reading the answer in advance.",
+    related: ["Decoder-only", "Next-token prediction"],
+  },
+  transformer: {
+    type: "Architecture",
+    title: "Transformer",
+    body:
+      "A Transformer uses self-attention to let tokens directly attend to other tokens in the sequence. GPT-1 uses a multi-layer Transformer decoder with masked self-attention.",
+    why:
+      "Compared with LSTMs, the authors argue that the Transformer provides a more structured memory for long-range linguistic dependencies.",
+    related: ["Self-attention", "Long-range dependency", "GPT"],
+  },
+  inputTransformations: {
+    type: "Design Move",
+    title: "Task-specific input transformations",
+    body:
+      "Different tasks have different structures, such as sentence pairs or document-question-answer triples. GPT-1 converts these structures into ordered token sequences so the same pretrained model can process them.",
+    why:
+      "This is one of the paper's ideological shifts: instead of designing a new architecture for every task, reshape the task into the model's text interface.",
+    related: ["Delimiter token", "Extract token", "Unified interface"],
+  },
+  auxiliaryObjective: {
+    type: "Training Objective",
+    title: "Auxiliary language-model objective",
+    body:
+      "An auxiliary objective is an extra training objective added beside the main task loss. GPT-1 optionally keeps a language-model objective during fine-tuning.",
+    why:
+      "The authors say it can improve generalization and speed convergence, although the ablation results show it is not the main source of the paper's gains.",
+    related: ["Regularization", "Fine-tuning", "Language modeling"],
+  },
+  zeroShot: {
+    type: "Analysis Concept",
+    title: "Zero-shot behavior",
+    body:
+      "Zero-shot behavior means the pretrained language model shows task-relevant behavior before supervised fine-tuning on that task.",
+    why:
+      "GPT-1's analysis section is historically important because it already hints that language models may acquire task abilities during pure language modeling.",
+    related: ["GPT-2", "GPT-3", "Prompting"],
+  },
+  booksCorpus: {
+    type: "Dataset",
+    title: "BooksCorpus",
+    body:
+      "BooksCorpus contains more than 7,000 unpublished books from several genres. Its key property is long, contiguous text rather than shuffled sentences.",
+    why:
+      "The paper uses it because long text helps a generative model learn discourse, long-range dependencies, entities, and narrative structure.",
+    related: ["Language modeling", "Long context", "Unlabeled corpus"],
+  },
+  bpe: {
+    type: "Tokenization",
+    title: "Byte Pair Encoding",
+    body:
+      "Byte Pair Encoding is a subword tokenization method. It can represent rare words by composing smaller units instead of relying only on a fixed word vocabulary.",
+    why:
+      "GPT-1 uses a BPE vocabulary with 40,000 merges, making language modeling more robust to rare or unseen words.",
+    related: ["Subword tokens", "Vocabulary", "Tokenization"],
+  },
+  perplexity: {
+    type: "Metric",
+    title: "Perplexity",
+    body:
+      "Perplexity measures how uncertain a language model is when predicting text. Lower perplexity usually means the model assigns higher probability to the observed sequence.",
+    why:
+      "The paper reports a token-level perplexity of 18.4 on BooksCorpus as evidence that the pretrained language model fits the corpus well.",
+    related: ["Language modeling", "Cross entropy", "Prediction"],
+  },
+  glue: {
+    type: "Benchmark",
+    title: "GLUE",
+    body:
+      "GLUE is a multi-task benchmark for evaluating natural language understanding. It includes classification, similarity, paraphrase, acceptability, and inference tasks.",
+    why:
+      "GPT-1 improves the overall GLUE score, supporting the claim that generative pretraining transfers across task types.",
+    related: ["CoLA", "SST-2", "MRPC", "STS-B", "QQP", "QNLI", "RTE"],
+  },
+  nli: {
+    type: "Task",
+    title: "Natural Language Inference",
+    body:
+      "NLI asks whether a hypothesis follows from, contradicts, or is neutral with respect to a premise.",
+    why:
+      "NLI is a strong test of sentence-pair reasoning and is one of the main places where GPT-1 shows transfer from language modeling to understanding.",
+    related: ["SNLI", "MultiNLI", "RTE", "SciTail"],
+  },
+  sentimentNeuron: {
+    type: "Historical Precursor",
+    title: "Unsupervised sentiment neuron",
+    body:
+      "OpenAI's 2017 sentiment-neuron work found that a language model trained to predict the next character in Amazon reviews learned a representation strongly correlated with sentiment.",
+    why:
+      "It suggested that prediction-only language modeling might naturally produce high-level semantic features. GPT-1 generalizes that intuition to many NLU tasks.",
+    related: ["Unsupervised learning", "Representation learning"],
+  },
+};
+
+const sections = [
+  ["overview", "Overview"],
+  ["why", "Why this paper appeared"],
+  ["thesis", "The paper's thesis"],
+  ["method", "Method"],
+  ["math", "Mathematical core"],
+  ["decoder", "Why decoder-only is enough"],
+  ["architecture", "Architecture and task interface"],
+  ["terminology", "Terminology"],
+  ["experiments", "Experiments"],
+  ["results", "Results and baselines"],
+  ["analysis", "Analysis"],
+  ["legacy", "Why it became a bridge"],
+  ["takeaways", "Takeaways"],
+];
+
+const historicalRows = [
+  {
+    source: "Word embeddings",
+    before: "Word2Vec and GloVe showed that unlabeled text could produce useful word-level representations.",
+    limitation: "They mainly transfer word-level information, not a full contextual language processor.",
+    role: "GPT-1 asks whether the whole model, not only embeddings, can be pretrained and transferred.",
+  },
+  {
+    source: "Unsupervised pretraining in deep learning",
+    before: "Earlier deep-learning work used unsupervised objectives to find good initializations.",
+    limitation: "The idea existed, but it was not yet a general-purpose NLP recipe across many understanding tasks.",
+    role: "GPT-1 turns initialization into a scalable language-understanding strategy.",
+  },
+  {
+    source: "Sentiment neuron",
+    before: "A character-level language model trained on reviews unexpectedly learned a strong sentiment feature.",
+    limitation: "It was a striking single-domain phenomenon, not yet a broad NLU framework.",
+    role: "GPT-1 asks whether language modeling can learn many high-level features, not only sentiment.",
+  },
+  {
+    source: "ULMFiT and LM fine-tuning",
+    before: "Language-model pretraining followed by fine-tuning had already shown strong results for text classification.",
+    limitation: "Most evidence was still concentrated on classification and LSTM-style models.",
+    role: "GPT-1 expands the pattern to entailment, QA, similarity, commonsense reasoning, and classification.",
+  },
+  {
+    source: "Transformer",
+    before: "Self-attention made long-range token interactions easier and training more parallelizable than recurrent networks.",
+    limitation: "The original Transformer was introduced for sequence-to-sequence translation.",
+    role: "GPT-1 keeps the causal decoder stack and uses it as a general-purpose language model backbone.",
+  },
+];
+
+const trainingStageRows = [
+  {
+    stage: "1. Generative pre-training",
+    data: "Large unlabeled text corpus: BooksCorpus",
+    objective: "Predict each token from previous tokens.",
+    output: "A decoder-only Transformer whose parameters encode transferable language knowledge.",
+  },
+  {
+    stage: "2. Discriminative fine-tuning",
+    data: "Task-specific labeled datasets such as SNLI, RACE, SST-2, CoLA, and others",
+    objective: "Predict task labels or answer choices using a small output layer on top of the pretrained model.",
+    output: "A task-adapted model that still uses almost the same architecture.",
+  },
+  {
+    stage: "Optional auxiliary LM during fine-tuning",
+    data: "The same labeled task examples, treated also as token sequences",
+    objective: "Optimize the task loss plus a weighted language-model loss.",
+    output: "Regularization and sometimes faster convergence, especially on larger datasets.",
+  },
+];
+
+const transformationRows = [
+  {
+    task: "Text classification",
+    original: "One text sequence",
+    transformed: "<Start> text <Extract>",
+    decision: "Use the final extraction representation to predict the class label.",
+    example: "SST-2: <Start> The movie was surprisingly good. <Extract> → positive",
+  },
+  {
+    task: "Textual entailment / NLI",
+    original: "Premise + hypothesis",
+    transformed: "<Start> premise <Delim> hypothesis <Extract>",
+    decision: "Predict entailment, contradiction, or neutral from the final representation.",
+    example: "Premise: A man is playing guitar. Hypothesis: A person is performing music. → entailment",
+  },
+  {
+    task: "Semantic similarity",
+    original: "Sentence A + sentence B, with no natural order",
+    transformed: "Run both orders: A <Delim> B and B <Delim> A, then add the two representations.",
+    decision: "Predict whether the sentences are paraphrases or assign a similarity score.",
+    example: "Are 'How do I learn Python?' and 'What is the best way to study Python?' semantically similar?",
+  },
+  {
+    task: "Question answering / commonsense reasoning",
+    original: "Document or story + question + candidate answers",
+    transformed: "For each candidate answer: document; question <Delim> answer_k",
+    decision: "Score each candidate independently and apply softmax over answer choices.",
+    example: "RACE: passage + question + option A/B/C/D → choose the best option.",
+  },
+];
+
+const taskRows = [
+  {
+    family: "Natural language inference",
+    fullName: "SNLI — Stanford Natural Language Inference",
+    input: "Premise and hypothesis sentence pair",
+    label: "entailment / contradiction / neutral",
+    example: "Premise: A child is playing in the snow. Hypothesis: A kid is outdoors. Label: entailment.",
+  },
+  {
+    family: "Natural language inference",
+    fullName: "MNLI / MultiNLI — Multi-Genre Natural Language Inference",
+    input: "Sentence pairs from multiple genres such as fiction, speech, and government text",
+    label: "entailment / contradiction / neutral",
+    example: "Premise: The committee rejected the proposal. Hypothesis: The proposal was accepted. Label: contradiction.",
+  },
+  {
+    family: "Natural language inference",
+    fullName: "QNLI — Question Natural Language Inference",
+    input: "Question and sentence, reformulated as entailment",
+    label: "answerable / not answerable, or entailment-style decision",
+    example: "Question: Where was Tesla born? Sentence: Nikola Tesla was born in Smiljan. Label: entailment.",
+  },
+  {
+    family: "Natural language inference",
+    fullName: "RTE — Recognizing Textual Entailment",
+    input: "Premise and hypothesis pair",
+    label: "entailment / not entailment",
+    example: "Premise: The company acquired the startup. Hypothesis: The startup was bought. Label: entailment.",
+  },
+  {
+    family: "Natural language inference",
+    fullName: "SciTail — Science Textual Entailment",
+    input: "Science-domain premise and hypothesis pairs",
+    label: "entails / neutral",
+    example: "Premise: Plants need sunlight to make food. Hypothesis: Sunlight is used in photosynthesis. Label: entails.",
+  },
+  {
+    family: "Question answering",
+    fullName: "RACE — ReAding Comprehension Dataset From Examinations",
+    input: "Passage, question, and multiple answer options from middle- and high-school English exams",
+    label: "Correct answer option",
+    example: "Passage about a historical event + question: Why did the person leave? Options A-D. Label: one correct option.",
+  },
+  {
+    family: "Commonsense reasoning",
+    fullName: "Story Cloze Test",
+    input: "Four-sentence story context and two possible endings",
+    label: "Correct story ending",
+    example: "Tom forgot his umbrella. The sky got dark. It started raining. Tom ran outside. Ending A: He got wet. Ending B: He flew to the moon. Label: A.",
+  },
+  {
+    family: "Semantic similarity / paraphrase",
+    fullName: "MRPC — Microsoft Research Paraphrase Corpus",
+    input: "Two news sentences",
+    label: "paraphrase / not paraphrase",
+    example: "Sentence 1: The company posted a profit. Sentence 2: The firm reported earnings. Label: paraphrase.",
+  },
+  {
+    family: "Semantic similarity / paraphrase",
+    fullName: "QQP — Quora Question Pairs",
+    input: "Two questions from Quora",
+    label: "duplicate / not duplicate",
+    example: "Q1: How can I learn machine learning? Q2: What is the best way to study ML? Label: duplicate.",
+  },
+  {
+    family: "Semantic similarity",
+    fullName: "STS-B — Semantic Textual Similarity Benchmark",
+    input: "Two sentences",
+    label: "Similarity score, usually treated as a regression/correlation task",
+    example: "Sentence 1: A man is playing a guitar. Sentence 2: A person plays an instrument. Label: high similarity.",
+  },
+  {
+    family: "Text classification",
+    fullName: "SST-2 — Stanford Sentiment Treebank, binary version",
+    input: "Movie-review sentence",
+    label: "positive / negative sentiment",
+    example: "Text: A charming and beautifully acted film. Label: positive.",
+  },
+  {
+    family: "Text classification",
+    fullName: "CoLA — Corpus of Linguistic Acceptability",
+    input: "Single sentence",
+    label: "grammatically acceptable / unacceptable",
+    example: "Text: The book was read by the student. Label: acceptable. Text: The book was readed. Label: unacceptable.",
+  },
+];
+
+const modelSpecRows = [
+  { item: "Architecture", value: "12-layer decoder-only Transformer with masked self-attention" },
+  { item: "Hidden size", value: "768-dimensional states" },
+  { item: "Attention heads", value: "12 heads" },
+  { item: "Feed-forward inner dimension", value: "3072" },
+  { item: "Context length", value: "512 tokens during pretraining" },
+  { item: "Tokenizer", value: "BPE vocabulary with 40,000 merges" },
+  { item: "Pretraining corpus", value: "BooksCorpus, more than 7,000 unpublished books" },
+  { item: "Optimizer", value: "Adam with maximum learning rate 2.5e-4" },
+  { item: "Fine-tuning", value: "Usually 3 epochs, batch size 32, learning rate 6.25e-5" },
+  { item: "Auxiliary objective weight", value: "λ = 0.5" },
+];
+
+const baselineRows = [
+  {
+    method: "ESIM + ELMo",
+    type: "NLI baseline with contextual word representations",
+    appearsIn: "SNLI comparison",
+    note: "ELMo provides deep contextualized word representations, but the downstream architecture is still task-specific.",
+  },
+  {
+    method: "CAFE",
+    type: "Compare-aggregate style model for NLI",
+    appearsIn: "MultiNLI, SNLI, SciTail",
+    note: "A strong architecture designed for sentence-pair comparison rather than a general task-agnostic model.",
+  },
+  {
+    method: "Stochastic Answer Network",
+    type: "NLI model",
+    appearsIn: "MultiNLI",
+    note: "A strong task-specific sentence inference baseline used to compare GPT-1's NLI performance.",
+  },
+  {
+    method: "GenSen",
+    type: "General sentence representation model",
+    appearsIn: "GLUE-style NLI comparisons",
+    note: "A universal sentence representation baseline; useful for asking whether GPT-1 learns stronger transferable representations.",
+  },
+  {
+    method: "Multi-task BiLSTM + Attention",
+    type: "Recurrent sequence model trained across tasks",
+    appearsIn: "QNLI, RTE, GLUE comparisons",
+    note: "It performs especially well on RTE, where GPT-1 underperforms, showing that GPT-1 is not uniformly best on small datasets.",
+  },
+  {
+    method: "Dynamic Fusion Net",
+    type: "Reading comprehension model",
+    appearsIn: "RACE",
+    note: "A task-specific machine reading model; GPT-1 beats even ensemble versions on RACE overall.",
+  },
+  {
+    method: "BiAttention MRU",
+    type: "Machine reading model with bidirectional attention",
+    appearsIn: "RACE",
+    note: "Another strong QA baseline; useful for showing that GPT-1 is competitive with specialized reading-comprehension systems.",
+  },
+  {
+    method: "Single-task / Multi-task BiLSTM + ELMo + Attention",
+    type: "GLUE baseline",
+    appearsIn: "CoLA, SST-2, MRPC, STS-B, QQP, GLUE average",
+    note: "Combines recurrent modeling with ELMo representations. GPT-1 improves the overall GLUE score over these baselines.",
+  },
+  {
+    method: "Sparse byte mLSTM",
+    type: "Character/byte-level language model baseline",
+    appearsIn: "SST-2",
+    note: "A strong sentiment baseline; GPT-1 is competitive but not best on SST-2.",
+  },
+];
+
+const resultRows = [
+  {
+    group: "NLI",
+    strongestResults: "GPT-1 improves MNLI, SNLI, SciTail, and QNLI over listed baselines; RTE is the exception.",
+    interpretation: "The model transfers sentence-pair reasoning from language modeling, but very small datasets remain difficult.",
+  },
+  {
+    group: "Question answering and commonsense reasoning",
+    strongestResults: "GPT-1 reaches 86.5 on Story Cloze and 59.0 overall on RACE, beating strong ensemble baselines.",
+    interpretation: "Long contiguous pretraining text and Transformer attention help with multi-sentence contexts and answer selection.",
+  },
+  {
+    group: "Semantic similarity",
+    strongestResults: "GPT-1 obtains state-of-the-art results on STS-B and QQP, while MRPC is competitive but not best.",
+    interpretation: "The model can compare meanings across sentence pairs, though some datasets still favor other architectures.",
+  },
+  {
+    group: "Text classification",
+    strongestResults: "GPT-1 makes a large jump on CoLA and is competitive on SST-2.",
+    interpretation: "The CoLA result suggests that language modeling teaches grammatical acceptability and syntax-sensitive judgments.",
+  },
+  {
+    group: "GLUE average",
+    strongestResults: "GPT-1 reports 72.8, above the previous listed GLUE baseline of 68.9.",
+    interpretation: "The main claim is broad transfer, not dominance on every single dataset.",
+  },
+];
+
+const ablationRows = [
+  {
+    variant: "Full Transformer with auxiliary LM",
+    average: "74.7",
+    meaning: "The default setup: pretrained Transformer plus supervised fine-tuning and auxiliary language-model objective.",
+  },
+  {
+    variant: "Transformer without pretraining",
+    average: "59.9",
+    meaning: "The largest drop. The same architecture trained from scratch on labeled tasks lacks the language knowledge learned from BooksCorpus.",
+  },
+  {
+    variant: "Transformer without auxiliary LM",
+    average: "75.0",
+    meaning: "Auxiliary LM is helpful on some large tasks but is not the central reason GPT-1 works.",
+  },
+  {
+    variant: "LSTM with auxiliary LM",
+    average: "69.1",
+    meaning: "Pretraining still helps, but the recurrent architecture transfers less effectively than the Transformer.",
+  },
+];
+
+const zeroShotRows = [
+  {
+    task: "CoLA",
+    heuristic: "Use the average token log-probability assigned by the language model and threshold it.",
+    intuition: "A grammatical sentence should look more probable to a good language model than an ungrammatical sentence.",
+  },
+  {
+    task: "SST-2",
+    heuristic: "Append a cue such as 'very' and compare the model's probability for 'positive' versus 'negative'.",
+    intuition: "Sentiment classification is turned into a constrained language-completion problem.",
+  },
+  {
+    task: "RACE",
+    heuristic: "Condition on document and question, then choose the answer with the highest average token log-probability.",
+    intuition: "A correct answer should form a more natural continuation of the passage-question context.",
+  },
+  {
+    task: "Winograd-style pronoun resolution",
+    heuristic: "Replace the pronoun with each possible referent and compare continuation probabilities.",
+    intuition: "The model's probability can reveal which referent makes the sentence more coherent.",
+  },
+];
+
+const terminologyRows = [
+  {
+    term: "Task-agnostic model",
+    meaning: "A model whose main architecture is not redesigned for each task.",
+    paperUse: "GPT-1 keeps the same Transformer and changes mostly the input formatting and output layer.",
+  },
+  {
+    term: "Discriminatively trained model",
+    meaning: "A model trained to directly predict labels or decisions.",
+    paperUse: "Most baselines are supervised models built specifically for their tasks.",
+  },
+  {
+    term: "Generative model",
+    meaning: "A model that assigns probability to sequences and can generate tokens.",
+    paperUse: "GPT-1 is pretrained by next-token prediction, a generative objective.",
+  },
+  {
+    term: "Language modeling objective",
+    meaning: "The objective of predicting a token from its context.",
+    paperUse: "It is the sole pretraining objective and an optional auxiliary fine-tuning objective.",
+  },
+  {
+    term: "Transfer learning",
+    meaning: "Learning in one setting and reusing that knowledge in another.",
+    paperUse: "Knowledge learned from BooksCorpus transfers to NLI, QA, similarity, and classification.",
+  },
+  {
+    term: "Auxiliary training objective",
+    meaning: "An extra loss optimized beside the main supervised task loss.",
+    paperUse: "GPT-1 adds language modeling during fine-tuning with weight λ.",
+  },
+  {
+    term: "Delimiter token",
+    meaning: "A special token that separates parts of a structured input.",
+    paperUse: "It tells the model where the premise ends and the hypothesis begins, or where the question ends and answer begins.",
+  },
+  {
+    term: "Extract token",
+    meaning: "A final special position whose hidden state is used as a sequence representation.",
+    paperUse: "Since the model is causal, the final token can attend to the entire preceding task input.",
+  },
+];
+
+const takeawayRows = [
+  "GPT-1 is best read as a transition paper: it moves NLP from task-specific supervised systems toward a general pretrained language-model interface.",
+  "The method is simple but historically powerful: generative pretraining on unlabeled text, then discriminative fine-tuning on labeled tasks.",
+  "Decoder-only is not a limitation for NLU if the whole task input is placed before a final decision position.",
+  "The paper's input transformations are as important as the architecture because they make many tasks look like one sequence-processing problem.",
+  "The experiments show broad transfer across NLI, QA, similarity, commonsense reasoning, and classification, not merely better sentiment classification.",
+  "The analysis shows that pretraining is the main source of the gain, Transformer is a better carrier than LSTM, and auxiliary LM is helpful but not fundamental.",
+  "The zero-shot analysis is a historical clue: even before GPT-2 and GPT-3, researchers could see task-relevant behavior emerging from language modeling alone.",
+  "The paper's legacy is not just GPT-1 as a model; it is the recipe that later scaling work would amplify.",
+];
+---
+
+<PaperLayout
+  title="Improving Language Understanding by Generative Pre-Training"
+  eyebrow="NLP · GPT-1 · 2018 / OpenAI"
+  authors="Alec Radford · Karthik Narasimhan · Tim Salimans · Ilya Sutskever"
+  arxivUrl="https://cdn.openai.com/research-covers/language-unsupervised/language_understanding_paper.pdf"
+  subtitle="A structured reading of the paper that turned generative language-model pretraining into a general recipe for natural language understanding."
+  sections={sections}
+  annotations={annotations}
+  initialAnnotation="generativePretraining"
+  compactTitle={true}
+>
+  <section id="overview" class="reading-section">
+    <h2>Overview</h2>
+
+    <div class="guide-box">
+      <strong>Reading guide</strong>
+      <p>
+        Read GPT-1 as a paper about a <em>change in interface</em>. Before this line of work, many NLP systems were built
+        around task-specific architectures: one design for entailment, another for question answering, another for sentiment,
+        another for paraphrase detection. GPT-1 proposes a different center of gravity: first train one large language model
+        on raw text, then adapt many tasks to that model.
+      </p>
+    </div>
+
+    <p>
+      The paper's headline idea is now familiar: use <button class="anno" data-anno="generativePretraining">generative pre-training</button>
+      on unlabeled text, then use <button class="anno" data-anno="discriminativeFineTuning">discriminative fine-tuning</button>
+      on labeled tasks. But in 2018, this was not yet the default NLP recipe. The default mental model was still closer to:
+      build a good supervised model for a specific dataset, perhaps initialize it with pretrained word embeddings, and tune the
+      architecture around that task.
+    </p>
+
+    <p>
+      GPT-1 changes that story. Its question is not simply, "Can we improve one benchmark?" It asks whether a single
+      <button class="anno" data-anno="decoderOnly">decoder-only Transformer</button> language model, trained only to predict
+      the next token, can become a general backbone for <button class="anno" data-anno="nlu">natural language understanding</button>.
+    </p>
+
+    <div class="architecture-flow history-flow">
+      <span>Unlabeled books</span>
+      <span>→</span>
+      <span>Generative LM pretraining</span>
+      <span>→</span>
+      <span>Task input transformation</span>
+      <span>→</span>
+      <span>Supervised fine-tuning</span>
+    </div>
+
+    <p>
+      This is why the paper is a bridge between classic NLP and large language models. It still evaluates on classic NLU
+      benchmarks such as GLUE, RACE, SNLI, and CoLA. But the organizing idea is already the LLM idea: language modeling on
+      large-scale text can produce a reusable base model, and downstream tasks should be expressed through that base model's
+      text interface.
+    </p>
+  </section>
+
+  <section id="why" class="reading-section">
+    <h2>Why this paper appeared</h2>
+
+    <p>
+      GPT-1 did not appear from nowhere. It was the meeting point of several earlier observations. The paper should be read
+      as a synthesis: word embeddings had shown that unlabeled text was useful; semi-supervised pretraining had shown that
+      unsupervised objectives could improve supervised learning; OpenAI's sentiment-neuron work suggested that language
+      modeling could learn surprisingly high-level semantic features; and the Transformer provided an architecture that could
+      carry these ideas at a larger scale.
+    </p>
+
+    <div class="results-table-wrap">
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th>Precursor</th>
+            <th>What it already showed</th>
+            <th>What was still missing</th>
+            <th>How GPT-1 uses it</th>
+          </tr>
+        </thead>
+        <tbody>
+          {historicalRows.map((row) => (
+            <tr>
+              <td>{row.source}</td>
+              <td>{row.before}</td>
+              <td>{row.limitation}</td>
+              <td>{row.role}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      The most story-like precursor is the <button class="anno" data-anno="sentimentNeuron">sentiment neuron</button>.
+      OpenAI had trained a language model to predict the next character in Amazon reviews and found that the model developed
+      a feature strongly aligned with sentiment. The important lesson was not merely that sentiment analysis worked. The lesson
+      was that prediction-only training could create semantic structure inside the model. See OpenAI's
+      <a
+        href="https://openai.com/index/unsupervised-sentiment-neuron/"
+        target="_blank"
+        rel="noreferrer"
+        style="color: #2563eb; text-decoration: underline; text-underline-offset: 3px; font-weight: 600;"
+      >
+        Unsupervised sentiment neuron ↗
+      </a>
+      blog post.
+    </p>
+
+    <p>
+      GPT-1 turns that clue into a broader program. If a language model can learn sentiment while only predicting text, maybe
+      a larger Transformer language model trained on long books can learn many kinds of linguistic and world knowledge: syntax,
+      coreference, entailment, discourse, commonsense, and answer plausibility. OpenAI's own GPT-1 blog explicitly frames the
+      work as following from the sentiment-neuron result; see
+      <a
+        href="https://openai.com/index/language-unsupervised/"
+        target="_blank"
+        rel="noreferrer"
+        style="color: #2563eb; text-decoration: underline; text-underline-offset: 3px; font-weight: 600;"
+      >
+        Improving language understanding with unsupervised learning ↗
+      </a>.
+    </p>
+
+    <div class="paper-passage">
+      <span class="passage-label">Where GPT-1 sits</span>
+      <p>
+        GPT-1 sits at a fork in the post-Transformer NLP timeline. Transformer made large attention-based language models
+        practical. GPT-1 then explored the causal, decoder-only branch: train a model to predict the next token, and reuse
+        the same model for language understanding through fine-tuning. BERT later pushed a different branch: bidirectional,
+        encoder-only pretraining designed especially for NLU. This contrast makes GPT-1 easier to place historically:
+        it is the generative pretraining route that later leads naturally to GPT-2, GPT-3, and modern decoder-only LLMs.
+      </p>
+    </div>
+  </section>
+
+  <section id="thesis" class="reading-section">
+    <h2>The paper's thesis</h2>
+
+    <p>
+      The paper begins from a data asymmetry. Labeled task datasets are small and expensive, but raw text is abundant. A
+      purely supervised NLU model must learn both language and task behavior from limited annotations. GPT-1 separates these
+      two jobs. First, learn broad language knowledge from raw text. Then, use labeled data only to teach the model how to map
+      that knowledge into a task-specific decision.
+    </p>
+
+    <div class="paper-passage">
+      <span class="passage-label">The central claim</span>
+      <p>
+        Large gains on language-understanding tasks can be achieved by first training a language model on a diverse unlabeled
+        corpus and then fine-tuning it on each supervised task, while making only minimal changes to the model architecture.
+      </p>
+    </div>
+
+    <p>
+      This is a <button class="anno" data-anno="semiSupervised">semi-supervised learning</button> paper because it uses both
+      unlabeled and labeled data. But its deeper claim is about representation and transfer. The authors do not want a feature
+      extractor that gives word vectors to many separate systems. They want the full pretrained neural network to become the
+      reusable object.
+    </p>
+
+    <div class="concept-grid">
+      <div class="concept-card">
+        <h3>Old center</h3>
+        <p>
+          The task architecture is central. Pretrained features, if used, are added to a supervised system designed for one task.
+        </p>
+      </div>
+      <div class="concept-card">
+        <h3>GPT-1 center</h3>
+        <p>
+          The pretrained language model is central. Tasks are converted into token sequences that the same model can read.
+        </p>
+      </div>
+      <div class="concept-card">
+        <h3>Later LLM center</h3>
+        <p>
+          The model interface becomes natural language itself. Many tasks are handled by prompting, instruction tuning, or
+          lightweight adaptation rather than separate architectures.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="method" class="reading-section">
+    <h2>Method</h2>
+
+    <p>
+      The method has two main stages and one interface trick. The stages are pretraining and fine-tuning. The interface trick
+      is <button class="anno" data-anno="inputTransformations">task-specific input transformation</button>: convert every task
+      into a text sequence that a causal Transformer can process.
+    </p>
+
+    <div class="results-table-wrap">
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th>Stage</th>
+            <th>Data</th>
+            <th>Objective</th>
+            <th>What comes out</th>
+          </tr>
+        </thead>
+        <tbody>
+          {trainingStageRows.map((row) => (
+            <tr>
+              <td>{row.stage}</td>
+              <td>{row.data}</td>
+              <td>{row.objective}</td>
+              <td>{row.output}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      The paper uses <button class="anno" data-anno="booksCorpus">BooksCorpus</button> for pretraining. That choice matters.
+      Books are long, contiguous sequences, so the model can learn dependencies across many sentences. A shuffled sentence
+      corpus can teach local language statistics, but it destroys many long-range structures that matter for narrative,
+      discourse, reference, and commonsense reasoning.
+    </p>
+
+    <p>
+      During fine-tuning, the paper adds only a small number of task-specific parameters: the output layer for the target
+      labels and embeddings for special delimiter tokens. This is why the paper calls the model task-agnostic. The model is
+      not completely identical across tasks, but the Transformer body is reused.
+    </p>
+  </section>
+
+  <section id="math" class="reading-section">
+    <h2>Mathematical core</h2>
+
+    <p>
+      The mathematical framework is easiest to understand if we separate <strong>training stages</strong> from
+      <strong>training objectives</strong>. GPT-1 has two main stages: first, unsupervised language-model pretraining;
+      second, supervised fine-tuning on downstream tasks. The paper writes these objectives as <code>L₁</code>,
+      <code>L₂</code>, and <code>L₃</code>.
+    </p>
+
+    <div class="paper-passage">
+      <span class="passage-label">Do not read L₁, L₂, L₃ as three separate models</span>
+      <p>
+        <code>L₁</code> is the language-model objective. <code>L₂</code> is the supervised task objective.
+        <code>L₃</code> is not a third training stage; it is the fine-tuning objective when the authors add
+        an auxiliary language-model term during supervised fine-tuning.
+      </p>
+    </div>
+
+    <div class="results-table-wrap">
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th>Objective</th>
+            <th>Where it is used</th>
+            <th>What it trains the model to do</th>
+            <th>Intuition</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>L₁</code></td>
+            <td>Pretraining; also reused as an auxiliary term during fine-tuning</td>
+            <td>Predict the next token from previous tokens</td>
+            <td>Learn general language structure from unlabeled text.</td>
+          </tr>
+          <tr>
+            <td><code>L₂</code></td>
+            <td>Supervised fine-tuning</td>
+            <td>Predict the correct downstream task label</td>
+            <td>Adapt the pretrained model to a specific NLU task.</td>
+          </tr>
+          <tr>
+            <td><code>L₃</code></td>
+            <td>Fine-tuning with an auxiliary objective</td>
+            <td>Optimize the task label objective and the language-model objective together</td>
+            <td>Learn the task while preserving general language-model ability.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>1. Language-model pretraining: L₁</h3>
+
+    <p>
+      The unlabeled corpus is treated as a long sequence of tokens:
+    </p>
+
+    <div class="formula-card emphasis-formula">
+      <code>U = &#123;u₁, u₂, ..., uₙ&#125;</code>
+    </div>
+
+    <p>
+      GPT-1 trains the model to predict each token from the previous <code>k</code> tokens:
+    </p>
+
+    <div class="formula-card emphasis-formula">
+      <code>L₁(U) = Σᵢ log P(uᵢ | uᵢ₋ₖ, ..., uᵢ₋₁; Θ)</code>
+    </div>
+
+    <p>
+      Here, <code>Θ</code> means all parameters of the Transformer language model. The objective is maximized,
+      so the model is rewarded when it assigns high probability to the real next token. In ordinary deep-learning
+      code, this is often implemented by minimizing the negative log-likelihood, but the idea is the same.
+    </p>
+
+    <div class="paper-passage">
+      <span class="passage-label">Concrete example</span>
+      <p>
+        Suppose the text is <em>The movie was surprisingly good</em>. A language model learns to predict
+        <code>movie</code> after seeing <code>The</code>, then <code>was</code> after seeing <code>The movie</code>,
+        and so on. This looks simple, but to do it well across billions of words, the model must learn syntax,
+        semantics, topic, style, entities, and long-range dependencies.
+      </p>
+    </div>
+
+    <p>
+      This is the heart of <button class="anno" data-anno="generativePretraining">generative pretraining</button>:
+      the model learns from raw text without task labels by predicting what comes next.
+    </p>
+
+    <h3>2. Transformer language model</h3>
+
+    <p>
+      Before the tokens enter the Transformer blocks, GPT-1 turns them into vectors. The initial hidden representation
+      combines token embeddings and positional embeddings:
+    </p>
+
+    <div class="formula-card emphasis-formula">
+      <code>h₀ = U Wₑ + Wₚ</code>
+    </div>
+
+    <p>
+      <code>Wₑ</code> is the token embedding matrix. It maps each token into a vector. <code>Wₚ</code> is the
+      position embedding matrix. It tells the model where each token appears in the sequence. Position information
+      is necessary because self-attention alone does not know whether a word came first, last, or in the middle.
+    </p>
+
+    <div class="formula-card emphasis-formula">
+      <code>hₗ = transformer_block(hₗ₋₁)</code>
+    </div>
+
+    <p>
+      Each Transformer block applies masked self-attention and a feed-forward network. The mask is important:
+      when predicting token <code>uᵢ</code>, the model can attend only to earlier tokens, not future tokens.
+      This is why GPT-1 is a decoder-only, autoregressive language model.
+    </p>
+
+    <div class="formula-card emphasis-formula">
+      <code>P(u) = softmax(hₙ Wₑᵀ)</code>
+    </div>
+
+    <p>
+      After the final Transformer layer, the hidden state is projected back to the vocabulary. The softmax produces
+      a probability distribution over possible next tokens.
+    </p>
+
+    <h3>3. Supervised fine-tuning: L₂</h3>
+
+    <p>
+      After pretraining, the model knows how to model text, but it does not yet know the label space of a specific
+      task. For a supervised dataset <code>C</code>, each example contains an input sequence
+      <code>x¹, ..., xᵐ</code> and a label <code>y</code>.
+    </p>
+
+    <p>
+      GPT-1 feeds the whole input sequence into the pretrained Transformer, takes the final hidden representation,
+      and uses a new linear layer <code>Wᵧ</code> to predict the task label:
+    </p>
+
+    <div class="formula-card emphasis-formula">
+      <code>P(y | x¹, ..., xᵐ) = softmax(hₗᵐ Wᵧ)</code>
+    </div>
+
+    <p>
+      The supervised fine-tuning objective is:
+    </p>
+
+    <div class="formula-card emphasis-formula">
+      <code>L₂(C) = Σ₍ₓ,ᵧ₎ log P(y | x¹, ..., xᵐ)</code>
+    </div>
+
+    <p>
+      <code>L₂</code> rewards the model for assigning high probability to the correct label. For sentiment classification,
+      the label might be <code>positive</code> or <code>negative</code>. For natural language inference, the label might be
+      <code>entailment</code>, <code>contradiction</code>, or <code>neutral</code>.
+    </p>
+
+    <div class="paper-passage">
+      <span class="passage-label">What changes during fine-tuning?</span>
+      <p>
+        GPT-1 does not train only the final classifier. The pretrained Transformer parameters are also updated.
+        Pretraining gives the model a strong initialization; fine-tuning adapts that model to the labeled task.
+      </p>
+    </div>
+
+    <h3>4. Fine-tuning with an auxiliary language-model objective: L₃</h3>
+
+    <p>
+      The authors also found it useful to keep a language-model objective during fine-tuning. This produces the
+      combined objective:
+    </p>
+
+    <div class="formula-card emphasis-formula">
+      <code>L₃(C) = L₂(C) + λ L₁(C)</code>
+    </div>
+
+    <p>
+      The main task objective is <code>L₂(C)</code>. The auxiliary term is <code>L₁(C)</code>, which means the model
+      continues to do next-token prediction on the downstream task's input text. The coefficient <code>λ</code> is the weight
+      that controls how strongly the auxiliary language-model objective influences fine-tuning.
+    </p>
+
+    <div class="concept-grid">
+      <div class="concept-card">
+        <h3><code>L₂(C)</code></h3>
+        <p>
+          The model learns the task label. For example, it learns that a given movie review should be classified as
+          <code>positive</code>.
+        </p>
+      </div>
+
+      <div class="concept-card">
+        <h3><code>λ L₁(C)</code></h3>
+        <p>
+          The model continues to model the task text as language. This provides token-level training signals and acts
+          like a regularizer.
+        </p>
+      </div>
+
+      <div class="concept-card">
+        <h3><code>L₃(C)</code></h3>
+        <p>
+          The model learns the supervised task while being encouraged not to forget the language-modeling ability learned
+          during pretraining.
+        </p>
+      </div>
+    </div>
+
+    <div class="paper-passage">
+      <span class="passage-label">Why this term is optional</span>
+      <p>
+        The core GPT-1 recipe is pretrain with <code>L₁</code>, then fine-tune with <code>L₂</code>. The auxiliary
+        language-model objective is an extra fine-tuning choice. In the paper's ablation study, removing it does not
+        destroy performance, which shows that the main source of GPT-1's improvement is generative pretraining itself,
+        not the auxiliary term.
+      </p>
+    </div>
+
+    <p>
+      In one sentence: <code>L₁</code> teaches the model general language modeling, <code>L₂</code> teaches the model
+      the downstream task, and <code>L₃</code> combines task learning with an auxiliary language-modeling signal during
+      fine-tuning.
+    </p>
+  </section>
+
+  <section id="decoder" class="reading-section">
+    <h2>Why decoder-only is enough</h2>
+
+    <p>
+      A common question is: if GPT-1 is a decoder-only generative model, why can it do understanding tasks? The answer is that
+      GPT-1 changes the task interface. A causal decoder can only look left, but if all the information needed for a decision is
+      placed before a final decision position, that final position can attend to the entire input.
+    </p>
+
+    <div class="architecture-flow">
+      <span>Task text</span>
+      <span>+</span>
+      <span>special separators</span>
+      <span>+</span>
+      <span>final extraction token</span>
+      <span>→</span>
+      <span>final hidden state sees all previous tokens</span>
+      <span>→</span>
+      <span>classification</span>
+    </div>
+
+    <p>
+      In the original encoder-decoder Transformer, the encoder reads a source sequence and the decoder generates a target
+      sequence. GPT-1 does not need the encoder because its pretraining target is not translation. It only needs an
+      autoregressive model of text:
+    </p>
+
+    <div class="formula-card emphasis-formula">
+      <code>P(x) = P(x₁) P(x₂ | x₁) P(x₃ | x₁, x₂) ... P(xₙ | x₍&lt;n₎)</code>
+    </div>
+
+    <p>
+      The <button class="anno" data-anno="causalMask">causal mask</button> makes sure token <code>i</code> cannot attend to
+      future tokens. This is exactly the constraint needed for next-token prediction. The same constraint does not prevent NLU
+      fine-tuning, because the final extraction position is placed after the premise, hypothesis, question, document, or answer
+      option.
+    </p>
+
+    <div class="paper-passage">
+      <span class="passage-label">The key intuition</span>
+      <p>
+        Decoder-only is not saying the model only generates and cannot understand. It says the model's universal operation is
+        causal sequence modeling. Understanding tasks become possible when their inputs are serialized into a sequence and the
+        decision is made at the end.
+      </p>
+    </div>
+
+    <p>
+      This is one of GPT-1's most important ideological moves. Rather than forcing the architecture to match every task's
+      structure, the paper forces the task to match the model's sequence interface.
+    </p>
+  </section>
+
+  <section id="architecture" class="reading-section">
+    <h2>Architecture and task interface</h2>
+
+    <p>
+      GPT-1 uses one pretrained causal Transformer as the shared text-processing engine. The important design move is not to
+      build a separate architecture for every NLU task. Instead, the paper rewrites each task into a token sequence that a
+      decoder-only language model can read from left to right.
+    </p>
+
+    <div class="paper-passage">
+      <span class="passage-label">The interface shift</span>
+      <p>
+        Instead of asking, <em>"What special model should we design for entailment, similarity, or QA?"</em> GPT-1 asks,
+        <em>"How can we frame this task as a sequence so the same pretrained Transformer can solve it?"</em>
+      </p>
+    </div>
+
+    <div class="architecture-flow history-flow">
+      <span>Raw task input</span>
+      <span>→</span>
+      <span>Task-specific sequence framing</span>
+      <span>→</span>
+      <span>Causal Transformer</span>
+      <span>→</span>
+      <span>Task decision</span>
+    </div>
+
+    <div class="svg-diagram-wrap" aria-label="Simplified GPT-1 architecture diagram">
+      <svg viewBox="0 0 980 430" role="img" class="paper-svg">
+        <title>GPT-1 causal Transformer architecture</title>
+        <desc>
+          A simplified diagram showing token and position embeddings entering a stack of masked self-attention Transformer blocks,
+          followed by either language-model prediction or a task-specific classifier head.
+        </desc>
+
+        <defs>
+          <marker
+            id="arrow"
+            markerWidth="10"
+            markerHeight="10"
+            refX="8"
+            refY="3"
+            orient="auto"
+            markerUnits="strokeWidth"
+          >
+            <path d="M0,0 L0,6 L9,3 z" fill="currentColor" />
+          </marker>
+        </defs>
+
+        <rect x="30" y="28" width="920" height="374" rx="18" fill="var(--diagram-bg, #f8fafc)" stroke="var(--border, #d0d7de)" />
+
+        <text x="490" y="68" text-anchor="middle" font-size="22" font-weight="700" fill="currentColor">
+          One causal Transformer reused across tasks
+        </text>
+
+        <rect x="70" y="135" width="180" height="76" rx="12" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+        <text x="160" y="165" text-anchor="middle" font-size="15" font-weight="700" fill="currentColor">
+          Token embeddings
+        </text>
+        <text x="160" y="190" text-anchor="middle" font-size="13" fill="currentColor">
+          word / BPE identity
+        </text>
+
+        <rect x="70" y="235" width="180" height="76" rx="12" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+        <text x="160" y="265" text-anchor="middle" font-size="15" font-weight="700" fill="currentColor">
+          Position embeddings
+        </text>
+        <text x="160" y="290" text-anchor="middle" font-size="13" fill="currentColor">
+          order information
+        </text>
+
+        <line x1="250" y1="173" x2="315" y2="213" stroke="currentColor" stroke-width="2" marker-end="url(#arrow)" />
+        <line x1="250" y1="273" x2="315" y2="233" stroke="currentColor" stroke-width="2" marker-end="url(#arrow)" />
+
+        <rect x="315" y="174" width="160" height="96" rx="14" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+        <text x="395" y="209" text-anchor="middle" font-size="15" font-weight="700" fill="currentColor">
+          Input states
+        </text>
+        <text x="395" y="235" text-anchor="middle" font-size="13" fill="currentColor">
+          token + position
+        </text>
+
+        <line x1="475" y1="222" x2="535" y2="222" stroke="currentColor" stroke-width="2" marker-end="url(#arrow)" />
+
+        <g>
+          <rect x="535" y="110" width="190" height="54" rx="10" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+          <rect x="550" y="176" width="190" height="54" rx="10" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+          <rect x="565" y="242" width="190" height="54" rx="10" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+          <rect x="580" y="308" width="190" height="54" rx="10" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+
+          <text x="630" y="142" text-anchor="middle" font-size="14" font-weight="700" fill="currentColor">
+            Transformer block
+          </text>
+          <text x="645" y="208" text-anchor="middle" font-size="14" font-weight="700" fill="currentColor">
+            Transformer block
+          </text>
+          <text x="660" y="274" text-anchor="middle" font-size="14" font-weight="700" fill="currentColor">
+            Transformer block
+          </text>
+          <text x="675" y="340" text-anchor="middle" font-size="14" font-weight="700" fill="currentColor">
+            Transformer block
+          </text>
+        </g>
+
+        <text x="652" y="91" text-anchor="middle" font-size="13" fill="currentColor">
+          masked self-attention: each position sees only previous tokens
+        </text>
+
+        <line x1="770" y1="222" x2="825" y2="222" stroke="currentColor" stroke-width="2" marker-end="url(#arrow)" />
+
+        <rect x="825" y="145" width="105" height="62" rx="12" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+        <text x="877.5" y="172" text-anchor="middle" font-size="13" font-weight="700" fill="currentColor">
+          LM head
+        </text>
+        <text x="877.5" y="191" text-anchor="middle" font-size="12" fill="currentColor">
+          next token
+        </text>
+
+        <rect x="825" y="238" width="105" height="62" rx="12" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+        <text x="877.5" y="265" text-anchor="middle" font-size="13" font-weight="700" fill="currentColor">
+          Task head
+        </text>
+        <text x="877.5" y="284" text-anchor="middle" font-size="12" fill="currentColor">
+          label / choice
+        </text>
+
+        <line x1="805" y1="222" x2="825" y2="176" stroke="currentColor" stroke-width="2" marker-end="url(#arrow)" />
+        <line x1="805" y1="222" x2="825" y2="269" stroke="currentColor" stroke-width="2" marker-end="url(#arrow)" />
+
+        <text x="490" y="388" text-anchor="middle" font-size="13" fill="currentColor">
+          Pretraining uses the LM head. Fine-tuning keeps the same Transformer and adds a small task-specific output layer.
+        </text>
+      </svg>
+    </div>
+
+    <p>
+      The same decoder-only model works for understanding tasks because GPT-1 places the information to be judged before a
+      final decision position. That final representation can attend to the whole framed input on its left, so it can be used
+      for classification or answer selection.
+    </p>
+
+    <div class="svg-diagram-wrap" aria-label="Task-specific input transformation diagram">
+      <svg viewBox="0 0 1040 560" role="img" class="paper-svg">
+        <title>GPT-1 task-specific input transformations</title>
+        <desc>
+          A diagram showing how classification, entailment, similarity, and multiple-choice question answering are converted
+          into token sequences for the same causal Transformer.
+        </desc>
+
+        <defs>
+          <marker
+            id="arrow-task"
+            markerWidth="10"
+            markerHeight="10"
+            refX="8"
+            refY="3"
+            orient="auto"
+            markerUnits="strokeWidth"
+          >
+            <path d="M0,0 L0,6 L9,3 z" fill="currentColor" />
+          </marker>
+        </defs>
+
+        <rect x="28" y="28" width="984" height="504" rx="18" fill="var(--diagram-bg, #f8fafc)" stroke="var(--border, #d0d7de)" />
+        <text x="520" y="66" text-anchor="middle" font-size="22" font-weight="700" fill="currentColor">
+          Different NLU tasks become sequences
+        </text>
+
+        <g>
+          <text x="72" y="118" font-size="16" font-weight="700" fill="currentColor">Classification</text>
+          <rect x="70" y="140" width="92" height="42" rx="8" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+          <text x="116" y="166" text-anchor="middle" font-size="13" fill="currentColor">[start]</text>
+          <rect x="172" y="140" width="220" height="42" rx="8" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+          <text x="282" y="166" text-anchor="middle" font-size="13" fill="currentColor">text</text>
+          <rect x="402" y="140" width="104" height="42" rx="8" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+          <text x="454" y="166" text-anchor="middle" font-size="13" fill="currentColor">[extract]</text>
+          <line x1="526" y1="161" x2="610" y2="161" stroke="currentColor" stroke-width="2" marker-end="url(#arrow-task)" />
+          <rect x="620" y="140" width="170" height="42" rx="8" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+          <text x="705" y="166" text-anchor="middle" font-size="13" fill="currentColor">linear + softmax</text>
+          <line x1="800" y1="161" x2="880" y2="161" stroke="currentColor" stroke-width="2" marker-end="url(#arrow-task)" />
+          <rect x="890" y="140" width="92" height="42" rx="8" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+          <text x="936" y="166" text-anchor="middle" font-size="13" fill="currentColor">label</text>
+        </g>
+
+        <g>
+          <text x="72" y="228" font-size="16" font-weight="700" fill="currentColor">Textual entailment</text>
+          <rect x="70" y="250" width="92" height="42" rx="8" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+          <text x="116" y="276" text-anchor="middle" font-size="13" fill="currentColor">[start]</text>
+          <rect x="172" y="250" width="170" height="42" rx="8" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+          <text x="257" y="276" text-anchor="middle" font-size="13" fill="currentColor">premise</text>
+          <rect x="352" y="250" width="112" height="42" rx="8" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+          <text x="408" y="276" text-anchor="middle" font-size="13" fill="currentColor">[delimiter]</text>
+          <rect x="474" y="250" width="170" height="42" rx="8" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+          <text x="559" y="276" text-anchor="middle" font-size="13" fill="currentColor">hypothesis</text>
+          <rect x="654" y="250" width="104" height="42" rx="8" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+          <text x="706" y="276" text-anchor="middle" font-size="13" fill="currentColor">[extract]</text>
+          <line x1="778" y1="271" x2="850" y2="271" stroke="currentColor" stroke-width="2" marker-end="url(#arrow-task)" />
+          <rect x="860" y="250" width="122" height="42" rx="8" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+          <text x="921" y="269" text-anchor="middle" font-size="12" fill="currentColor">entail / neutral</text>
+          <text x="921" y="284" text-anchor="middle" font-size="12" fill="currentColor">/ contradict</text>
+        </g>
+
+        <g>
+          <text x="72" y="338" font-size="16" font-weight="700" fill="currentColor">Semantic similarity</text>
+          <rect x="70" y="360" width="92" height="42" rx="8" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+          <text x="116" y="386" text-anchor="middle" font-size="13" fill="currentColor">A → B</text>
+          <rect x="172" y="360" width="92" height="42" rx="8" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+          <text x="218" y="386" text-anchor="middle" font-size="13" fill="currentColor">B → A</text>
+          <line x1="284" y1="381" x2="360" y2="381" stroke="currentColor" stroke-width="2" marker-end="url(#arrow-task)" />
+          <rect x="370" y="360" width="218" height="42" rx="8" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+          <text x="479" y="386" text-anchor="middle" font-size="13" fill="currentColor">run both orders</text>
+          <line x1="598" y1="381" x2="674" y2="381" stroke="currentColor" stroke-width="2" marker-end="url(#arrow-task)" />
+          <rect x="684" y="360" width="178" height="42" rx="8" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+          <text x="773" y="386" text-anchor="middle" font-size="13" fill="currentColor">add representations</text>
+          <line x1="872" y1="381" x2="908" y2="381" stroke="currentColor" stroke-width="2" marker-end="url(#arrow-task)" />
+          <rect x="918" y="360" width="64" height="42" rx="8" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+          <text x="950" y="386" text-anchor="middle" font-size="13" fill="currentColor">score</text>
+        </g>
+
+        <g>
+          <text x="72" y="448" font-size="16" font-weight="700" fill="currentColor">Multiple-choice QA</text>
+          <rect x="70" y="470" width="170" height="42" rx="8" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+          <text x="155" y="496" text-anchor="middle" font-size="13" fill="currentColor">context + question</text>
+          <rect x="250" y="470" width="112" height="42" rx="8" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+          <text x="306" y="496" text-anchor="middle" font-size="13" fill="currentColor">answer A</text>
+          <rect x="372" y="470" width="112" height="42" rx="8" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+          <text x="428" y="496" text-anchor="middle" font-size="13" fill="currentColor">answer B</text>
+          <rect x="494" y="470" width="112" height="42" rx="8" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+          <text x="550" y="496" text-anchor="middle" font-size="13" fill="currentColor">answer C</text>
+          <line x1="626" y1="491" x2="700" y2="491" stroke="currentColor" stroke-width="2" marker-end="url(#arrow-task)" />
+          <rect x="710" y="470" width="152" height="42" rx="8" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+          <text x="786" y="496" text-anchor="middle" font-size="13" fill="currentColor">score each option</text>
+          <line x1="872" y1="491" x2="908" y2="491" stroke="currentColor" stroke-width="2" marker-end="url(#arrow-task)" />
+          <rect x="918" y="470" width="64" height="42" rx="8" fill="var(--card-bg, #ffffff)" stroke="var(--border, #d0d7de)" />
+          <text x="950" y="496" text-anchor="middle" font-size="13" fill="currentColor">pick</text>
+        </g>
+      </svg>
+    </div>
+
+    <div class="results-table-wrap">
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th>Task type</th>
+            <th>Original structure</th>
+            <th>GPT-1 transformation</th>
+            <th>How the decision is made</th>
+            <th>Concrete intuition</th>
+          </tr>
+        </thead>
+        <tbody>
+          {transformationRows.map((row) => (
+            <tr>
+              <td>{row.task}</td>
+              <td>{row.original}</td>
+              <td><code>{row.transformed}</code></td>
+              <td>{row.decision}</td>
+              <td>{row.example}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      This table is the practical reason GPT-1 can be both generative and useful for NLU. Textual entailment, semantic
+      similarity, and multiple-choice QA are not naturally single-string classification problems. GPT-1 makes them look like
+      sequence-processing problems. Once the task is framed as a sequence, the same pretrained Transformer can be reused.
+    </p>
+  </section>
+
+  <section id="experiments" class="reading-section">
+    <h2>Experiments</h2>
+
+    <p>
+      The experiments are designed to prove breadth. The paper evaluates four task families: natural language inference, question answering and commonsense reasoning,
+      semantic similarity, and text classification.
+    </p>
+
+    <h3>Model and training setup</h3>
+
+    <p>
+      The hyperparameters matter mainly because they show that GPT-1 is already recognizably a modern Transformer language
+      model: deep decoder stack, BPE tokens, learned positional embeddings, dropout, Adam, warmup, and short supervised
+      fine-tuning after a much larger unsupervised pretraining stage.
+    </p>
+
+    <div class="results-table-wrap">
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th>Setup item</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          {modelSpecRows.map((row) => (
+            <tr>
+              <td>{row.item}</td>
+              <td>{row.value}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Tasks and datasets</h3>
+
+    <div class="results-table-wrap">
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th>Task family</th>
+            <th>Dataset full name</th>
+            <th>Input</th>
+            <th>Label / target</th>
+            <th>Intuitive example</th>
+          </tr>
+        </thead>
+        <tbody>
+          {taskRows.map((row) => (
+            <tr>
+              <td>{row.family}</td>
+              <td>{row.fullName}</td>
+              <td>{row.input}</td>
+              <td>{row.label}</td>
+              <td>{row.example}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      This task spread is central to the paper's argument. If GPT-1 only improved one dataset, it could be dismissed as a
+      clever model for that dataset. By testing twelve datasets across different task types, the authors argue for a general
+      transfer-learning recipe.
+    </p>
+  </section>
+
+  <section id="results" class="reading-section">
+    <h2>Results and baselines</h2>
+
+    <p>
+      The headline result is that GPT-1 reaches new state-of-the-art results on 9 of the 12 evaluated datasets. But the more
+      important reading is comparative: the model often beats systems with architectures specifically designed for a given task,
+      while GPT-1 keeps a mostly shared model body.
+    </p>
+
+    <div class="results-table-wrap">
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th>Task group</th>
+            <th>Main reported outcome</th>
+            <th>Interpretation</th>
+          </tr>
+        </thead>
+        <tbody>
+          {resultRows.map((row) => (
+            <tr>
+              <td>{row.group}</td>
+              <td>{row.strongestResults}</td>
+              <td>{row.interpretation}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <h3>What were the baselines?</h3>
+
+    <p>
+      The table below groups the most important models by what they were used to test.
+    </p>
+
+    <div class="results-table-wrap">
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th>Baseline / comparison method</th>
+            <th>Type</th>
+            <th>Where it appears</th>
+            <th>Why it matters</th>
+          </tr>
+        </thead>
+        <tbody>
+          {baselineRows.map((row) => (
+            <tr>
+              <td>{row.method}</td>
+              <td>{row.type}</td>
+              <td>{row.appearsIn}</td>
+              <td>{row.note}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      The RTE result is worth keeping. GPT-1 does not win everything. RTE is small, and a multi-task BiLSTM baseline does
+      better. This matters because it prevents an overly simple reading. The paper's claim is broad transfer from generative
+      pretraining, not that GPT-1 automatically dominates every low-resource dataset.
+    </p>
+  </section>
+
+  <section id="analysis" class="reading-section">
+    <h2>Analysis</h2>
+
+    <p>
+      The strongest empirical result is not only that GPT-1 gets good benchmark scores. The deeper question is
+      <strong>where the improvement comes from</strong>. Is the model better because it uses a Transformer? Because it keeps
+      a language-modeling objective during fine-tuning? Or because unsupervised pretraining has already built useful linguistic
+      machinery before the model ever sees task labels?
+    </p>
+
+    <p>
+      The answer is that the model's ability is distributed across the pretrained Transformer itself. GPT-1 is not merely using
+      pretrained word vectors. It transfers a whole stack of contextual computation: token representations, attention patterns,
+      intermediate abstractions, and higher-level sequence features. This is why the paper matters historically. It moves NLP
+      from <em>pretrained embeddings</em> toward <em>pretrained models</em>.
+    </p>
+
+    <h3>1. The whole pretrained model matters</h3>
+
+    <p>
+      Earlier NLP systems often transferred only word embeddings. That helped, but it meant the downstream model still had to
+      learn most of the task-specific reasoning from labeled data. GPT-1 tests a more ambitious idea: after a language model has
+      been trained on large amounts of text, every layer of the network may contain reusable language-processing ability.
+    </p>
+
+    <p>
+      When more pretrained layers are transferred into downstream tasks, performance keeps improving. Transferring embeddings is
+      useful, but transferring deeper Transformer blocks is even better. Full transfer gives the strongest result. The lesson is
+      that the pretrained model has learned more than word meaning; it has learned contextual operations that downstream tasks can
+      reuse.
+    </p>
+
+    <div class="architecture-flow">
+      <span>Word embeddings</span>
+      <span>→</span>
+      <span>lower contextual layers</span>
+      <span>→</span>
+      <span>deeper Transformer blocks</span>
+      <span>→</span>
+      <span>full pretrained language model</span>
+    </div>
+
+    <div class="paper-passage">
+      <span class="passage-label">Why this matters</span>
+      <p>
+        GPT-1 changes the unit of transfer. The reusable object is no longer just a vector for each word. It is a trained
+        sequence-processing system that can be adapted to classification, entailment, similarity, and multiple-choice reasoning.
+      </p>
+    </div>
+
+    <h3>2. Task behavior appears before task training</h3>
+
+    <p>
+      GPT-1 is still mainly a fine-tuning paper. It is not yet a prompting paper in the later GPT-3 sense. But the authors notice
+      something important: even before supervised fine-tuning, the pretrained language model already shows weak but meaningful
+      task-relevant behavior.
+    </p>
+
+    <p>
+      This is tested with simple heuristics. The model is not given a task-specific classifier. Instead, the researchers ask
+      whether language-model probabilities themselves can be used as a crude decision rule. If a sentence is grammatical, the
+      language model should assign it higher probability. If an answer makes sense after a passage and question, the model should
+      assign that continuation higher probability. If a sentiment completion is more likely after a review, that probability can
+      be treated as a sentiment signal.
+    </p>
+
+    <div class="results-table-wrap">
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th>Task</th>
+            <th>Zero-shot heuristic</th>
+            <th>Why this makes sense for a language model</th>
+          </tr>
+        </thead>
+        <tbody>
+          {zeroShotRows.map((row) => (
+            <tr>
+              <td>{row.task}</td>
+              <td>{row.heuristic}</td>
+              <td>{row.intuition}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      These heuristic scores generally improve as language-model pretraining continues. That does not mean GPT-1 is already a
+      strong zero-shot system. The more important point is that next-token prediction appears to create pieces of task behavior
+      as a byproduct. The model learns patterns that look like grammar judgment, sentiment recognition, answer selection, and
+      coreference resolution because those abilities help it predict text.
+    </p>
+
+    <div class="paper-passage">
+      <span class="passage-label">The historical signal</span>
+      <p>
+        This is one of the bridges from GPT-1 to later GPT systems. GPT-1 still relies on fine-tuning, but it already suggests
+        that sufficiently trained language models contain latent task abilities before explicit task training.
+      </p>
+    </div>
+
+    <h3>3. What actually causes the improvement?</h3>
+
+    <p>
+      The ablations separate three possible explanations. Maybe a Transformer is already strong enough without pretraining.
+      Maybe the auxiliary language-modeling objective during fine-tuning is the key. Or maybe the main source is the initial
+      generative pretraining on unlabeled text.
+    </p>
+
+    <div class="results-table-wrap">
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th>Variant</th>
+            <th>Average score</th>
+            <th>What it tells us</th>
+          </tr>
+        </thead>
+        <tbody>
+          {ablationRows.map((row) => (
+            <tr>
+              <td>{row.variant}</td>
+              <td>{row.average}</td>
+              <td>{row.meaning}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      The largest drop happens when pretraining is removed. A Transformer trained only on supervised task data performs far worse
+      than the pretrained version. This shows that the architecture alone is not enough. The model needs the broad linguistic
+      knowledge and strong initialization produced by language modeling on large unlabeled text.
+    </p>
+
+    <p>
+      Replacing the Transformer with an LSTM also hurts, which supports the choice of self-attention. The LSTM can be pretrained,
+      but it does not transfer as well. Long-range attention gives the Transformer a better way to store and reuse dependencies
+      across tokens, sentences, and structured inputs.
+    </p>
+
+    <p>
+      Removing the auxiliary language-modeling objective during fine-tuning is much less decisive. It helps some larger tasks,
+      but it is not the main reason the system works. The central mechanism is still the same: pretrain a high-capacity causal
+      Transformer on unlabeled text, then adapt the whole model to supervised tasks.
+    </p>
+
+    <div class="paper-passage">
+      <span class="passage-label">The analysis takeaway</span>
+      <p>
+        The evidence points to a clear hierarchy. Generative pretraining is the main source of transfer. The Transformer is the
+        right carrier for that transfer. The auxiliary language-modeling objective is a useful training detail, but not the core
+        discovery.
+      </p>
+    </div>
+  </section>
+
+  <section id="legacy" class="reading-section">
+    <h2>Why it became a bridge</h2>
+
+    <p>
+      GPT-1 is still an NLP paper in its benchmarks and evaluation style. It fine-tunes on supervised datasets and reports
+      task-specific scores. But it is already an LLM paper in its worldview: the most important artifact is the pretrained
+      language model, and the most important training signal is large-scale text prediction.
+    </p>
+
+    <p>
+      Its immediate legacy is the <strong>pretrain-then-fine-tune</strong> recipe. Its deeper legacy is the belief that next-token
+      prediction is not merely a generation trick; it can be a general-purpose representation-learning objective. GPT-2 scaled
+      this idea and emphasized zero-shot transfer more strongly. GPT-3 scaled it further and made in-context learning central.
+      Scaling laws later studied how predictable improvements emerge as model size, data, and compute increase.
+    </p>
+
+    <div class="architecture-flow history-flow">
+      <span>Word embeddings</span>
+      <span>→</span>
+      <span>Sentiment neuron</span>
+      <span>→</span>
+      <span>Transformer</span>
+      <span>→</span>
+      <span>GPT-1: pretrain + fine-tune</span>
+      <span>→</span>
+      <span>GPT-2: stronger zero-shot LM</span>
+      <span>→</span>
+      <span>GPT-3 / scaling</span>
+    </div>
+
+    <p>
+      This is why GPT-1 is so useful in a classic-paper library. It is not only a model checkpoint or a benchmark result. It is
+      a conceptual pivot: instead of treating language models as auxiliary tools for NLP systems, it treats the language model
+      as the system that downstream NLP tasks should adapt to.
+    </p>
+  </section>
+
+  <section id="takeaways" class="reading-section final-takeaways">
+    <h2>Takeaways</h2>
+
+    <ol>
+      {takeawayRows.map((item) => (
+        <li>{item}</li>
+      ))}
+    </ol>
+  </section>
+</PaperLayout>
