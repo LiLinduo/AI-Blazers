@@ -219,7 +219,7 @@ export const papers: Paper[] = [
     subtopic: "GAN",
     year: 2014,
     title: "Generative Adversarial Nets",
-    status: "soon",
+    status: "ready",
   },
   {
     id: "ddpm-2020",

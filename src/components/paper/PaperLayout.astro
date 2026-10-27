@@ -2,16 +2,21 @@
 import "../../styles/global.css";
 import "../../styles/paper.css";
 
+import katex from "katex";
+import "katex/dist/katex.min.css";
+
 import SiteHeader from "../site/SiteHeader.astro";
 import PaperToc from "./PaperToc.astro";
 import PaperHero from "./PaperHero.astro";
 import AnnotationRail from "./AnnotationRail.astro";
 
 type SectionItem = [id: string, label: string];
+
 type AnnotationItem = {
   type: string;
   title: string;
   body: string;
+  formula?: string;
   why?: string;
   related?: string[];
 };
@@ -40,7 +45,26 @@ const {
 
 const base = import.meta.env.BASE_URL;
 const faviconPath = `${base.replace(/\/$/, "")}/favicon.ico`;
-const defaultAnnotation = initialAnnotation ?? Object.keys(annotations)[0] ?? "";
+
+const defaultAnnotation =
+  initialAnnotation ?? Object.keys(annotations)[0] ?? "";
+
+// Pre-render annotation formulas with KaTeX.
+const renderedAnnotations = Object.fromEntries(
+  Object.entries(annotations).map(([key, item]) => [
+    key,
+    {
+      ...item,
+      formulaHtml: item.formula
+        ? katex.renderToString(item.formula, {
+            displayMode: true,
+            throwOnError: false,
+            trust: false,
+          })
+        : "",
+    },
+  ])
+);
 ---
 
 <html lang="en">
@@ -73,24 +97,70 @@ const defaultAnnotation = initialAnnotation ?? Object.keys(annotations)[0] ?? ""
       <AnnotationRail />
     </main>
 
-    <script define:vars={{ annotations, defaultAnnotation }}>
+    <script
+      define:vars={{
+        annotations: renderedAnnotations,
+        defaultAnnotation,
+      }}
+    >
       const buttons = document.querySelectorAll("[data-anno]");
+
       const titleEl = document.getElementById("annotation-title");
       const typeEl = document.getElementById("annotation-type");
       const bodyEl = document.getElementById("annotation-body");
-      const whyWrap = document.getElementById("annotation-why-wrap");
+
+      const formulaWrap = document.getElementById(
+        "annotation-formula-wrap"
+      );
+      const formulaEl = document.getElementById(
+        "annotation-formula"
+      );
+
+      const whyWrap = document.getElementById(
+        "annotation-why-wrap"
+      );
       const whyEl = document.getElementById("annotation-why");
-      const relatedWrap = document.getElementById("annotation-related-wrap");
-      const relatedEl = document.getElementById("annotation-related");
+
+      const relatedWrap = document.getElementById(
+        "annotation-related-wrap"
+      );
+      const relatedEl = document.getElementById(
+        "annotation-related"
+      );
 
       function setAnnotation(key) {
         const item = annotations[key];
-        if (!item || !titleEl || !typeEl || !bodyEl || !whyWrap || !whyEl || !relatedWrap || !relatedEl) return;
 
+        if (
+          !item ||
+          !titleEl ||
+          !typeEl ||
+          !bodyEl ||
+          !formulaWrap ||
+          !formulaEl ||
+          !whyWrap ||
+          !whyEl ||
+          !relatedWrap ||
+          !relatedEl
+        ) {
+          return;
+        }
+
+        // Basic annotation information.
         titleEl.textContent = item.title;
         typeEl.textContent = item.type;
         bodyEl.textContent = item.body;
 
+        // Optional mathematical formula.
+        if (item.formulaHtml) {
+          formulaEl.innerHTML = item.formulaHtml;
+          formulaWrap.classList.remove("hidden");
+        } else {
+          formulaEl.replaceChildren();
+          formulaWrap.classList.add("hidden");
+        }
+
+        // Why it matters.
         if (item.why) {
           whyWrap.classList.remove("hidden");
           whyEl.textContent = item.why;
@@ -99,7 +169,11 @@ const defaultAnnotation = initialAnnotation ?? Object.keys(annotations)[0] ?? ""
           whyEl.textContent = "";
         }
 
-        if (Array.isArray(item.related) && item.related.length > 0) {
+        // Related concepts.
+        if (
+          Array.isArray(item.related) &&
+          item.related.length > 0
+        ) {
           relatedWrap.classList.remove("hidden");
 
           const chips = item.related.map((tag) => {
@@ -115,18 +189,26 @@ const defaultAnnotation = initialAnnotation ?? Object.keys(annotations)[0] ?? ""
           relatedEl.replaceChildren();
         }
 
-        buttons.forEach((button) => button.classList.remove("active"));
+        // Highlight the active annotation button.
+        buttons.forEach((button) => {
+          button.classList.remove("active");
+        });
+
         document
           .querySelectorAll(`[data-anno="${key}"]`)
-          .forEach((button) => button.classList.add("active"));
+          .forEach((button) => {
+            button.classList.add("active");
+          });
       }
 
+      // Register annotation click events.
       buttons.forEach((button) => {
         button.addEventListener("click", () => {
           setAnnotation(button.dataset.anno);
         });
       });
 
+      // Show the default annotation.
       if (defaultAnnotation) {
         setAnnotation(defaultAnnotation);
       }
